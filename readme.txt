@@ -47,6 +47,3 @@ Further Note:
    with the Windows 8.* SDKs (replacing the old D3DXMath). You can use it for
    all of your linear algebra tasks.
    Documentation: https://msdn.microsoft.com/en-us/library/windows/desktop/hh437833(v=vs.85).aspx
-
-
-
