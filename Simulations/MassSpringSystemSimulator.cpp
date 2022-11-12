@@ -5,8 +5,8 @@
 MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	h = 0.1f;
 	sphereSize = 0.05f;
-	number_massPoints = 2;
-	number_springs = 1;
+	number_massPoints = 0;
+	number_springs = 0;
 	m_fStiffness = 40;
 	m_fMass = 10;
 }
@@ -27,27 +27,20 @@ void MassSpringSystemSimulator::reset() {
 }
 
 void MassSpringSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
-	switch (m_iTestCase)
-	{
-	case 0: drawDemo1(); break;
-	case 1: drawSphere(Vec3(0.5, 0.5, 0.5)); break;
-	case 2: drawSphere(Vec3(-0.5, -0.5, -0.5)); break;
-	case 3: drawSphere(Vec3(-0.2, -0.2, -0.2)); break;
-	}
-}
-
-void MassSpringSystemSimulator::drawDemo1() {
 	drawAllMassPoints();
 	drawAllSprings();
 }
 
 void MassSpringSystemSimulator::setupDemo1() {
+	m_fStiffness = 40;
+	m_fMass = 10;
+
 	int index1 = addMassPoint(Vec3(0, 0, 0), Vec3(-1, 0, 0), false);
 	int index2 = addMassPoint(Vec3(0, 2, 0), Vec3(1, 0, 0), false);
 
 	int springIndex1 = addSpring(index1, index2, 1);
 
-	// print new velocity and new position for both points
+	// print new velocity and new position for both points after one timestep
 	Spring spring = getSpring(springIndex1);
 	MassPoint point1 = getMassPoint(index1);
 	MassPoint point2 = getMassPoint(index2);
@@ -62,7 +55,7 @@ void MassSpringSystemSimulator::setupDemo1() {
 	float initial_len = spring.initial_len;
 	double timeStep = 0.1;
 	
-	std::cout << "P1: " << oldPos1 << ", P2: " << oldPos2 << std::endl;
+	std::cout << std::endl << "P1: " << oldPos1 << ", P2: " << oldPos2 << std::endl;
 	std::cout << "EULER:-------------------------------------------------------" << std::endl;
 	std::cout << "New positions: " << std::endl; 
 	std::cout << "P1:" << calculateNextPosition(oldPos1, timeStep, oldVel1) << ", P2: " << calculateNextPosition(oldPos2, timeStep, oldVel2) << std::endl;
@@ -79,7 +72,18 @@ void MassSpringSystemSimulator::setupDemo1() {
 	std::cout << "New positions: " << std::endl;
 	std::cout << "P1: " << calculateNextPosition(oldPos1, timeStep, velMidstep1) << ", P2: " << calculateNextPosition(oldPos2, timeStep, velMidstep2) << std::endl;
 	std::cout << "New velocity: " << std::endl;
-	std::cout << "V1: " << setprecision(3) << calculateNextVelocity(oldVel1, timeStep, posMidstep1, posMidstep2, stiffness, initial_len, mass1) << ", V2: " << calculateNextVelocity(oldVel2, timeStep, posMidstep2, posMidstep1, stiffness, initial_len, mass2) << std::endl;
+	std::cout << "V1: " << calculateNextVelocity(oldVel1, timeStep, posMidstep1, posMidstep2, stiffness, initial_len, mass1) << 
+		", V2: " << calculateNextVelocity(oldVel2, timeStep, posMidstep2, posMidstep1, stiffness, initial_len, mass2) << std::endl;
+}
+
+void MassSpringSystemSimulator::setupDemo2() {
+	m_fStiffness = 40;
+	m_fMass = 10;
+
+	int index1 = addMassPoint(Vec3(0, 0, 0), Vec3(-1, 0, 0), false);
+	int index2 = addMassPoint(Vec3(0, 2, 0), Vec3(1, 0, 0), false);
+
+	int springIndex1 = addSpring(index1, index2, 1);
 }
 
 void MassSpringSystemSimulator::drawAllMassPoints() {
@@ -116,6 +120,7 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase) {
 		break;
 	case 1:
 		cout << "Demo 2\n";
+		setupDemo2();
 		break;
 	case 2:
 		cout << "Demo 3\n";
@@ -138,6 +143,21 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	case 0:
 		break;
 	case 1:
+		for (int i = 0; i < getNumberOfSprings(); i++) {
+			Spring s = spring_list[i];
+			MassPoint p1 = getMassPoint(s.massPointIndex1);
+			MassPoint p2 = getMassPoint(s.massPointIndex2);
+
+			Vec3 newPos1 = calculateNextPosition(p1.position, timeStep, p1.velocity);
+			Vec3 newPos2 = calculateNextPosition(p2.position, timeStep, p2.velocity);
+			Vec3 newVel1 = calculateNextVelocity(p1.velocity, timeStep, p1.position, p2.position, s.stiffness, s.initial_len, p1.mass);
+			Vec3 newVel2 = calculateNextVelocity(p2.velocity, timeStep, p2.position, p1.position, s.stiffness, s.initial_len, p2.mass);
+
+			massPoint_list[s.massPointIndex1].position = newPos1;
+			massPoint_list[s.massPointIndex2].position = newPos2 ;
+			massPoint_list[s.massPointIndex1].velocity = newVel1 ;
+			massPoint_list[s.massPointIndex2].velocity = newVel2 ;
+		}
 		break;
 	case 2:
 		break;
@@ -147,8 +167,7 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 }
 
 Vec3 MassSpringSystemSimulator::calculateNextPosition(Vec3 oldPos, float timeStep, Vec3 oldVel) {
-	float rounded_timeStep = roundf(100 * timeStep) / 100;
-	return oldPos + rounded_timeStep * oldVel;
+	return oldPos + timeStep * oldVel;
 }
 
 Vec3 MassSpringSystemSimulator::calculateNextVelocity(Vec3 oldVel, float timeStep, Vec3 oldPos, Vec3 otherOldPos, float stiffness, float initial_len, float mass) {

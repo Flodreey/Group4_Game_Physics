@@ -35,8 +35,8 @@ public:
 	void initUI(DrawingUtilitiesClass * DUC);
 	void reset();
 	void drawFrame(ID3D11DeviceContext* pd3dImmediateContext);
-	void drawDemo1();
 	void setupDemo1();
+	void setupDemo2();
 	void notifyCaseChanged(int testCase);
 	void externalForcesCalculations(float timeElapsed);
 	void simulateTimestep(float timeStep);
@@ -62,7 +62,6 @@ public:
 	Vec3 getVelocityOfMassPoint(int index);
 	void applyExternalForce(Vec3 force);
 	void drawSphere(Vec3 pos);
-	void drawLine(Vec3 pos1, Vec3 pos2);
 	void drawAllMassPoints();
 	void drawAllSprings();
 	float getLengthOfVec3(Vec3 vec);
