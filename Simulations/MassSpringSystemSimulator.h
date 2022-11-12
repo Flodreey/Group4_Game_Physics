@@ -17,11 +17,12 @@ struct MassPoint {
 };
 
 struct Spring {
+	int index;
 	float stiffness;
 	float initial_len;
 	float current_len;
-	Vec3 massPoint1;
-	Vec3 massPoint2;
+	int massPointIndex1;
+	int massPointIndex2;
 };
 
 class MassSpringSystemSimulator:public Simulator{
@@ -39,6 +40,8 @@ public:
 	void notifyCaseChanged(int testCase);
 	void externalForcesCalculations(float timeElapsed);
 	void simulateTimestep(float timeStep);
+	Vec3 calculateNextPosition(Vec3 oldPos, float timeStep, Vec3 oldVel);
+	Vec3 calculateNextVelocity(Vec3 oldVel, float timeStep, Vec3 oldPos, Vec3 otherOldPos, float stiffness, float initial_len, float mass);
 	void onClick(int x, int y);
 	void onMouse(int x, int y);
 
@@ -47,11 +50,14 @@ public:
 	void setStiffness(float stiffness);
 	void setDampingFactor(float damping);
 	int addMassPoint(Vec3 position, Vec3 Velocity, bool isFixed);
-	void addSpring(int masspoint1, int masspoint2, float initialLength);
+	int addSpring(int masspoint1, int masspoint2, float initialLength);
 	void deleteAllPointsAndSprings();
 	int getNumberOfMassPoints();
 	int getNumberOfSprings();
+	Spring getSpring(int index, bool& outSuccess);
+	Spring getSpring(int index);
 	MassPoint getMassPoint(int index, bool& outSuccess);
+	MassPoint getMassPoint(int index);
 	Vec3 getPositionOfMassPoint(int index);
 	Vec3 getVelocityOfMassPoint(int index);
 	void applyExternalForce(Vec3 force);
