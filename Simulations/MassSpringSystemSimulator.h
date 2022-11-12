@@ -36,10 +36,12 @@ public:
 	void reset();
 	void drawFrame(ID3D11DeviceContext* pd3dImmediateContext);
 	void setupDemo1();
-	void setupDemo2();
+	void setupDemo23();
 	void notifyCaseChanged(int testCase);
 	void externalForcesCalculations(float timeElapsed);
 	void simulateTimestep(float timeStep);
+	void doEulerStep(Spring s, float timeStep);
+	void doMidpointStep(Spring s, float timeStep);
 	Vec3 calculateNextPosition(Vec3 oldPos, float timeStep, Vec3 oldVel);
 	Vec3 calculateNextVelocity(Vec3 oldVel, float timeStep, Vec3 oldPos, Vec3 otherOldPos, float stiffness, float initial_len, float mass);
 	void onClick(int x, int y);

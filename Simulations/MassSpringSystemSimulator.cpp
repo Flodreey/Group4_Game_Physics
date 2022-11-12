@@ -9,6 +9,9 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	number_springs = 0;
 	m_fStiffness = 40;
 	m_fMass = 10;
+	m_fDamping = 0;
+	m_iIntegrator = 0;
+
 }
 
 // UI Functions
@@ -76,7 +79,7 @@ void MassSpringSystemSimulator::setupDemo1() {
 		", V2: " << calculateNextVelocity(oldVel2, timeStep, posMidstep2, posMidstep1, stiffness, initial_len, mass2) << std::endl;
 }
 
-void MassSpringSystemSimulator::setupDemo2() {
+void MassSpringSystemSimulator::setupDemo23() {
 	m_fStiffness = 40;
 	m_fMass = 10;
 
@@ -120,10 +123,11 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase) {
 		break;
 	case 1:
 		cout << "Demo 2\n";
-		setupDemo2();
+		setupDemo23();
 		break;
 	case 2:
 		cout << "Demo 3\n";
+		setupDemo23();
 		break;
 	case 3:
 		cout << "Demo 4\n";
@@ -144,26 +148,51 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 		break;
 	case 1:
 		for (int i = 0; i < getNumberOfSprings(); i++) {
-			Spring s = spring_list[i];
-			MassPoint p1 = getMassPoint(s.massPointIndex1);
-			MassPoint p2 = getMassPoint(s.massPointIndex2);
-
-			Vec3 newPos1 = calculateNextPosition(p1.position, timeStep, p1.velocity);
-			Vec3 newPos2 = calculateNextPosition(p2.position, timeStep, p2.velocity);
-			Vec3 newVel1 = calculateNextVelocity(p1.velocity, timeStep, p1.position, p2.position, s.stiffness, s.initial_len, p1.mass);
-			Vec3 newVel2 = calculateNextVelocity(p2.velocity, timeStep, p2.position, p1.position, s.stiffness, s.initial_len, p2.mass);
-
-			massPoint_list[s.massPointIndex1].position = newPos1;
-			massPoint_list[s.massPointIndex2].position = newPos2 ;
-			massPoint_list[s.massPointIndex1].velocity = newVel1 ;
-			massPoint_list[s.massPointIndex2].velocity = newVel2 ;
+			doEulerStep(spring_list[i], timeStep);
 		}
 		break;
 	case 2:
+		for (int i = 0; i < getNumberOfSprings(); i++) {
+			doMidpointStep(spring_list[i], timeStep);
+		}
 		break;
 	case 3:
 		break;
 	}
+}
+
+void MassSpringSystemSimulator::doEulerStep(Spring s, float timeStep) {
+	MassPoint p1 = getMassPoint(s.massPointIndex1);
+	MassPoint p2 = getMassPoint(s.massPointIndex2);
+
+	Vec3 newPos1 = calculateNextPosition(p1.position, timeStep, p1.velocity);
+	Vec3 newPos2 = calculateNextPosition(p2.position, timeStep, p2.velocity);
+	Vec3 newVel1 = calculateNextVelocity(p1.velocity, timeStep, p1.position, p2.position, s.stiffness, s.initial_len, p1.mass);
+	Vec3 newVel2 = calculateNextVelocity(p2.velocity, timeStep, p2.position, p1.position, s.stiffness, s.initial_len, p2.mass);
+
+	massPoint_list[s.massPointIndex1].position = newPos1;
+	massPoint_list[s.massPointIndex2].position = newPos2;
+	massPoint_list[s.massPointIndex1].velocity = newVel1;
+	massPoint_list[s.massPointIndex2].velocity = newVel2;
+}
+
+void MassSpringSystemSimulator::doMidpointStep(Spring s, float timeStep) {
+	MassPoint p1 = getMassPoint(s.massPointIndex1);
+	MassPoint p2 = getMassPoint(s.massPointIndex2);
+
+	Vec3 posMidstep1 = calculateNextPosition(p1.position, 0.5 * timeStep, p1.velocity);
+	Vec3 posMidstep2 = calculateNextPosition(p2.position, 0.5 * timeStep, p2.position);
+	Vec3 velMidstep1 = calculateNextVelocity(p1.velocity, 0.5 * timeStep, p1.position, p2.position, s.stiffness, s.initial_len, p1.mass);
+	Vec3 velMidstep2 = calculateNextVelocity(p2.velocity, 0.5 * timeStep, p2.position, p1.position, s.stiffness, s.initial_len, p2.mass);
+	Vec3 newPos1 = calculateNextPosition(p1.position, timeStep, velMidstep1);
+	Vec3 newPos2 = calculateNextPosition(p2.position, timeStep, velMidstep2);
+	Vec3 newVel1 = calculateNextVelocity(p1.velocity, timeStep, posMidstep1, posMidstep2, s.stiffness, s.initial_len, p1.mass);
+	Vec3 newVel2 = calculateNextVelocity(p2.velocity, timeStep, posMidstep2, posMidstep1, s.stiffness, s.initial_len, p2.mass);
+
+	massPoint_list[s.massPointIndex1].position = newPos1;
+	massPoint_list[s.massPointIndex2].position = newPos2;
+	massPoint_list[s.massPointIndex1].velocity = newVel1;
+	massPoint_list[s.massPointIndex2].velocity = newVel2;
 }
 
 Vec3 MassSpringSystemSimulator::calculateNextPosition(Vec3 oldPos, float timeStep, Vec3 oldVel) {
