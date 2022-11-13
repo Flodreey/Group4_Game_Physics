@@ -35,8 +35,10 @@ public:
 	void initUI(DrawingUtilitiesClass * DUC);
 	void reset();
 	void drawFrame(ID3D11DeviceContext* pd3dImmediateContext);
+	void setDefaultValues();
 	void setupDemo1();
 	void setupDemo23();
+	void setupDemo4();
 	void notifyCaseChanged(int testCase);
 	void externalForcesCalculations(float timeElapsed);
 	void simulateTimestep(float timeStep);
@@ -64,6 +66,7 @@ public:
 	Vec3 getVelocityOfMassPoint(int index);
 	void applyExternalForce(Vec3 force);
 	void drawSphere(Vec3 pos);
+	void drawSphere(Vec3 pos, Vec3 color);
 	void drawAllMassPoints();
 	void drawAllSprings();
 	float getLengthOfVec3(Vec3 vec);
@@ -79,16 +82,20 @@ private:
 	float m_fStiffness;
 	float m_fDamping;
 	int m_iIntegrator;
-
-	float h;
+	int previousIntegrator;
 
 	float sphereSize;
+	Vec3 default_sphereColor;
 	int number_massPoints;
 	int number_springs;
+
+	int number_columns;
+	int number_rows;
 
 	std::vector<MassPoint> massPoint_list;
 	std::vector<Spring> spring_list;
 
+	float gravity;
 
 	// UI Attributes
 	Vec3 m_externalForce;
