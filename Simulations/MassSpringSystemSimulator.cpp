@@ -11,10 +11,21 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_fMass = 1;
 	m_fDamping = 1;
 	m_iIntegrator = 0;
-	previousIntegrator = -1;
 	gravity = 1;
 	number_columns = 10;
 	number_rows = 10;
+	currentlyClicking = false;
+	m_externalForce = Vec3();
+
+	previousMass = -1;
+	previousStiffness = -1;
+	previousDamping = -1;
+	previousGravity = -1;
+	previousIntegrator = -1;
+	previousNumberColumns = -1;
+	previousNumberRows = -1;
+
+	
 }
 
 // UI Functions
@@ -30,10 +41,10 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 		TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_TESTCASE, &m_iIntegrator, "");
 		
 		// Lets user manipulate the stiffness of springs, internal friction, gravity, mass of masspoints 
-		TwAddVarRW(DUC->g_pTweakBar, "Stiffness", TW_TYPE_FLOAT, &m_fStiffness, "min=1");
-		TwAddVarRW(DUC->g_pTweakBar, "Friction", TW_TYPE_FLOAT, &m_fDamping, "min=0");
+		//TwAddVarRW(DUC->g_pTweakBar, "Stiffness", TW_TYPE_FLOAT, &m_fStiffness, "min=1");
+		//TwAddVarRW(DUC->g_pTweakBar, "Friction", TW_TYPE_FLOAT, &m_fDamping, "min=0");
 		TwAddVarRW(DUC->g_pTweakBar, "Gravity", TW_TYPE_FLOAT, &gravity, "min=0");
-		TwAddVarRW(DUC->g_pTweakBar, "Mass", TW_TYPE_FLOAT, &m_fMass, "min=1");
+		//TwAddVarRW(DUC->g_pTweakBar, "Mass", TW_TYPE_FLOAT, &m_fMass, "min=1");
 
 		// Lets user decide how big the cloth in the simulation should be
 		TwAddVarRW(DUC->g_pTweakBar, "Colums", TW_TYPE_INT32, &number_columns, "min=3");
@@ -43,8 +54,9 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 
 void MassSpringSystemSimulator::reset() {
 	m_mouse.x = m_mouse.y = 0;
-	m_trackmouse.x = m_trackmouse.y = 0;
-	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
+	clickedPos.x = clickedPos.y = 0;
+	//m_trackmouse.x = m_trackmouse.y = 0;
+	//m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 }
 
 void MassSpringSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
@@ -128,7 +140,7 @@ void MassSpringSystemSimulator::setupDemo23() {
 void MassSpringSystemSimulator::setupDemo4() {
 	m_fStiffness = 80;
 	m_fMass = 1;
-	gravity = 1;
+	//gravity = 1;
 	m_fDamping = 0.5f;
 	sphereSize = 0.02f;
 
@@ -250,7 +262,7 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 		}
 		break;
 	case 3:
-		// Integration Method was changed
+		// If Integration Method was changed, then display it
 		if (previousIntegrator != m_iIntegrator) {
 			if (m_iIntegrator == EULER)
 				cout << "Integration Method: Euler" << endl;
@@ -259,7 +271,26 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 			else if (m_iIntegrator == MIDPOINT)
 				cout << "Integration Method: Midpoint" << endl;
 			previousIntegrator = m_iIntegrator;
+			deleteAllPointsAndSprings();
+			setupDemo4();
 		}
+
+		// If any of these variables gets changed, load the setup again: 
+		// m_fMass, m_fStiffness, m_fDamping, gravity, number_columns, number_rows
+		if (m_fMass != previousMass || m_fStiffness != previousStiffness || m_fDamping != previousDamping ||
+			gravity != previousGravity || number_columns != previousNumberColumns || number_rows != previousNumberRows) {
+			deleteAllPointsAndSprings();
+			setupDemo4();
+			previousMass = m_fMass;
+			previousStiffness = m_fStiffness;
+			previousDamping = m_fDamping;
+			previousGravity = gravity;
+			previousNumberColumns = number_columns;
+			previousNumberRows = number_rows;
+		}
+
+		// move the points in the middle (depending on number_colums and number_rows) according to the mouse
+
 
 		for (int i = 0; i < getNumberOfSprings(); i++) {
 			switch (m_iIntegrator) {
@@ -279,6 +310,13 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	}
 }
 
+void MassSpringSystemSimulator::checkCollision(Vec3& newPos, Vec3& newVel) {
+	if (newPos.y < -0.95 && m_iTestCase == 3) {
+		newPos.y = -0.95;
+		newVel *= -1;
+	}
+}
+
 void MassSpringSystemSimulator::doEulerStep(Spring s, float timeStep) {
 	MassPoint p1 = getMassPoint(s.massPointIndex1);
 	MassPoint p2 = getMassPoint(s.massPointIndex2);
@@ -291,10 +329,12 @@ void MassSpringSystemSimulator::doEulerStep(Spring s, float timeStep) {
 	if (!p1.isFixed) {
 		newPos1 = calculateNextPosition(p1.position, timeStep, p1.velocity);
 		newVel1 = calculateNextVelocity(p1.velocity, timeStep, p1.position, p2.position, s.stiffness, s.initial_len, p1.mass);
+		checkCollision(newPos1, newVel1);
 	}
 	if (!p2.isFixed) {
 		newPos2 = calculateNextPosition(p2.position, timeStep, p2.velocity);
 		newVel2 = calculateNextVelocity(p2.velocity, timeStep, p2.position, p1.position, s.stiffness, s.initial_len, p2.mass);
+		checkCollision(newPos2, newVel2);
 	}
 
 	massPoint_list[s.massPointIndex1].position = newPos1;
@@ -320,10 +360,12 @@ void MassSpringSystemSimulator::doMidpointStep(Spring s, float timeStep) {
 	if (!p1.isFixed) {
 		newPos1 = calculateNextPosition(p1.position, timeStep, velMidstep1);
 		newVel1 = calculateNextVelocity(p1.velocity, timeStep, posMidstep1, posMidstep2, s.stiffness, s.initial_len, p1.mass);
+		checkCollision(newPos1, newVel1);
 	}
 	if (!p2.isFixed) {
 		newPos2 = calculateNextPosition(p2.position, timeStep, velMidstep2);
 		newVel2 = calculateNextVelocity(p2.velocity, timeStep, posMidstep2, posMidstep1, s.stiffness, s.initial_len, p2.mass);
+		checkCollision(newPos2, newVel2);
 	}
 
 	massPoint_list[s.massPointIndex1].position = newPos1;
@@ -357,11 +399,28 @@ Vec3 MassSpringSystemSimulator::calculateNextVelocity(Vec3 oldVel, float timeSte
 }
 
 void MassSpringSystemSimulator::onClick(int x, int y) {
+	if (m_iTestCase != 3) {
+		return;
+	}
+	if (!currentlyClicking) {
+		clickedPos.x = x;
+		clickedPos.y = y;
+		currentlyClicking = true;
+		//cout << "Click: " << x << ", " << y << endl;
+	}
+	m_mouse.x = x;
+	m_mouse.y = y;
 
+	middlePointY = clickedPos.y - m_mouse.y;
+	int middleIndex = (number_rows / 2) * number_columns + number_columns / 2;
+	massPoint_list[middleIndex].position.y = 0.001 * (clickedPos.y - m_mouse.y);
+
+	//cout << "onClick: " << x << ", " << y << endl;
 }
 
 void MassSpringSystemSimulator::onMouse(int x, int y) {
-
+	currentlyClicking = false;
+	//cout << "onMouse: " << x << ", " << y << endl;
 }
 
 // Specific Functions

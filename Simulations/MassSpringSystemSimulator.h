@@ -42,6 +42,7 @@ public:
 	void notifyCaseChanged(int testCase);
 	void externalForcesCalculations(float timeElapsed);
 	void simulateTimestep(float timeStep);
+	void checkCollision(Vec3& newPos, Vec3& newVel);
 	void doEulerStep(Spring s, float timeStep);
 	void doMidpointStep(Spring s, float timeStep);
 	Vec3 calculateNextPosition(Vec3 oldPos, float timeStep, Vec3 oldVel);
@@ -81,26 +82,36 @@ private:
 	float m_fMass;
 	float m_fStiffness;
 	float m_fDamping;
+	float gravity;
 	int m_iIntegrator;
-	int previousIntegrator;
 
+	int number_columns;
+	int number_rows;
+
+	// previous variables to detect when they were changed
+	float previousMass;
+	float previousStiffness;
+	float previousDamping;
+	float previousGravity;
+	int previousIntegrator;
+	int previousNumberColumns;
+	int previousNumberRows;
+		
 	float sphereSize;
 	Vec3 default_sphereColor;
 	int number_massPoints;
 	int number_springs;
 
-	int number_columns;
-	int number_rows;
-
 	std::vector<MassPoint> massPoint_list;
 	std::vector<Spring> spring_list;
 
-	float gravity;
-
-	// UI Attributes
 	Vec3 m_externalForce;
 	Point2D m_mouse;
-	Point2D m_trackmouse;
-	Point2D m_oldtrackmouse;
+	Point2D clickedPos;
+
+	bool currentlyClicking;
+	float middlePointY;
+	//Point2D m_trackmouse;
+	//Point2D m_oldtrackmouse;
 };
 #endif
