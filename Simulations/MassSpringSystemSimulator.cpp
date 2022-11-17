@@ -4,7 +4,6 @@
 // Constructor
 MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	sphereSize = 0.05f;
-	default_sphereColor = 0.6 * Vec3(0.97, 0.86, 1);
 	number_massPoints = 0;
 	number_springs = 0;
 	m_fStiffness = 80;
@@ -17,9 +16,6 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	currentlyClicking = false;
 	m_externalForce = Vec3();
 
-	previousMass = -1;
-	previousStiffness = -1;
-	previousDamping = -1;
 	previousGravity = -1;
 	previousIntegrator = -1;
 	previousNumberColumns = -1;
@@ -37,14 +33,11 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 	if (m_iTestCase == 3) {
 		// Lets user choose between Euler-Integration and Midpoint-Integration, Euler: 0, Leap Frog:1, Midpoint: 2
-		TwType TW_TYPE_TESTCASE = TwDefineEnumFromString("Integrator", "Euler, Leap Frog, Midpoint");
+		TwType TW_TYPE_TESTCASE = TwDefineEnumFromString("Integrator", "Euler, Leap Frog (not implemented), Midpoint");
 		TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_TESTCASE, &m_iIntegrator, "");
 		
-		// Lets user manipulate the stiffness of springs, internal friction, gravity, mass of masspoints 
-		//TwAddVarRW(DUC->g_pTweakBar, "Stiffness", TW_TYPE_FLOAT, &m_fStiffness, "min=1");
-		//TwAddVarRW(DUC->g_pTweakBar, "Friction", TW_TYPE_FLOAT, &m_fDamping, "min=0");
+		// Lets user manipulate the gravity
 		TwAddVarRW(DUC->g_pTweakBar, "Gravity", TW_TYPE_FLOAT, &gravity, "min=0");
-		//TwAddVarRW(DUC->g_pTweakBar, "Mass", TW_TYPE_FLOAT, &m_fMass, "min=1");
 
 		// Lets user decide how big the cloth in the simulation should be
 		TwAddVarRW(DUC->g_pTweakBar, "Colums", TW_TYPE_INT32, &number_columns, "min=3");
@@ -55,20 +48,11 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 void MassSpringSystemSimulator::reset() {
 	m_mouse.x = m_mouse.y = 0;
 	clickedPos.x = clickedPos.y = 0;
-	//m_trackmouse.x = m_trackmouse.y = 0;
-	//m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 }
 
 void MassSpringSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
 	drawAllMassPoints();
 	drawAllSprings();
-}
-
-void MassSpringSystemSimulator::setDefaultValues() {
-	m_fStiffness = 80;
-	m_fMass = 1;
-	gravity = 1;
-	m_fDamping = 0.5f;
 }
 
 void MassSpringSystemSimulator::setupDemo1() {
@@ -99,6 +83,7 @@ void MassSpringSystemSimulator::setupDemo1() {
 	double timeStep = 0.1;
 	
 	std::cout << std::endl << "P1: " << oldPos1 << ", P2: " << oldPos2 << std::endl;
+
 	std::cout << "EULER:-------------------------------------------------------" << std::endl;
 	std::cout << "New positions: " << std::endl; 
 	std::cout << "P1:" << calculateNextPosition(oldPos1, timeStep, oldVel1) << ", P2: " << calculateNextPosition(oldPos2, timeStep, oldVel2) << std::endl;
@@ -117,7 +102,7 @@ void MassSpringSystemSimulator::setupDemo1() {
 	std::cout << "New velocity: " << std::endl;
 	std::cout << "V1: " << calculateNextVelocity(oldVel1, timeStep, posMidstep1, posMidstep2, stiffness, initial_len, mass1) << 
 		", V2: " << calculateNextVelocity(oldVel2, timeStep, posMidstep2, posMidstep1, stiffness, initial_len, mass2) << std::endl;
-}
+	}
 
 void MassSpringSystemSimulator::setupDemo23() {
 	m_fStiffness = 40;
@@ -190,8 +175,15 @@ void MassSpringSystemSimulator::setupDemo4() {
 }
 
 void MassSpringSystemSimulator::drawAllMassPoints() {
+	int middleIndex = (number_rows / 2) * number_columns + number_columns / 2;
 	for (int i = 0; i < massPoint_list.size(); i++) {
-		drawSphere(massPoint_list[i].position);
+		if (i == middleIndex) {
+			// draw the one mass point that you can manipulate with your mouse differently
+			drawSphere(massPoint_list[i].position, Vec3(1, 1, 0));
+		}
+		else {
+			drawSphere(massPoint_list[i].position);
+		}
 	}
 }
 
@@ -207,11 +199,11 @@ void MassSpringSystemSimulator::drawAllSprings() {
 }
 
 void MassSpringSystemSimulator::drawSphere(Vec3 pos) {
-	drawSphere(pos, default_sphereColor);
+	DUC->setUpLighting(Vec3(), 0.4 * Vec3(1, 1, 1), 100, 0.6 * Vec3(0.97, 0.86, 1));
+	DUC->drawSphere(pos, Vec3(sphereSize, sphereSize, sphereSize));
 }
 
 void MassSpringSystemSimulator::drawSphere(Vec3 pos, Vec3 color) {
-	//DUC->setUpLighting(Vec3(), 0.4 * Vec3(1, 1, 1), 100, 0.6 * Vec3(0.97, 0.86, 1));
 	DUC->setUpLighting(Vec3(), 0.4 * Vec3(1, 1, 1), 100, color);
 	DUC->drawSphere(pos, Vec3(sphereSize, sphereSize, sphereSize));
 }
@@ -247,6 +239,10 @@ void MassSpringSystemSimulator::externalForcesCalculations(float timeElapsed) {
 
 }
 
+void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
+
+}
+
 void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	switch (m_iTestCase) {
 	case 0:
@@ -262,7 +258,7 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 		}
 		break;
 	case 3:
-		// If Integration Method was changed, then display it
+		// If Integration Method was changed, then display it and load the setup again
 		if (previousIntegrator != m_iIntegrator) {
 			if (m_iIntegrator == EULER)
 				cout << "Integration Method: Euler" << endl;
@@ -275,22 +271,15 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 			setupDemo4();
 		}
 
-		// If any of these variables gets changed, load the setup again: 
-		// m_fMass, m_fStiffness, m_fDamping, gravity, number_columns, number_rows
-		if (m_fMass != previousMass || m_fStiffness != previousStiffness || m_fDamping != previousDamping ||
-			gravity != previousGravity || number_columns != previousNumberColumns || number_rows != previousNumberRows) {
+		// If any of these variables get changed in the UI, load the setup again: 
+		// gravity, number_columns, number_rows
+		if (gravity != previousGravity || number_columns != previousNumberColumns || number_rows != previousNumberRows) {
 			deleteAllPointsAndSprings();
 			setupDemo4();
-			previousMass = m_fMass;
-			previousStiffness = m_fStiffness;
-			previousDamping = m_fDamping;
 			previousGravity = gravity;
 			previousNumberColumns = number_columns;
 			previousNumberRows = number_rows;
 		}
-
-		// move the points in the middle (depending on number_colums and number_rows) according to the mouse
-
 
 		for (int i = 0; i < getNumberOfSprings(); i++) {
 			switch (m_iIntegrator) {
@@ -310,6 +299,7 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	}
 }
 
+// checks if the points are below y=-0.95
 void MassSpringSystemSimulator::checkCollision(Vec3& newPos, Vec3& newVel) {
 	if (newPos.y < -0.95 && m_iTestCase == 3) {
 		newPos.y = -0.95;
@@ -398,6 +388,8 @@ Vec3 MassSpringSystemSimulator::calculateNextVelocity(Vec3 oldVel, float timeSte
 	return oldVel + timeStep * accVec;
 }
 
+// when clicking you generate a two dimensional vector and when releasing the mouse this vector gets 
+// added to one of the mass points in the middle (the yellow one) -> only in Demo 4
 void MassSpringSystemSimulator::onClick(int x, int y) {
 	if (m_iTestCase != 3) {
 		return;
@@ -411,15 +403,21 @@ void MassSpringSystemSimulator::onClick(int x, int y) {
 	m_mouse.x = x;
 	m_mouse.y = y;
 
-	middlePointY = clickedPos.y - m_mouse.y;
-	int middleIndex = (number_rows / 2) * number_columns + number_columns / 2;
-	massPoint_list[middleIndex].position.y = 0.001 * (clickedPos.y - m_mouse.y);
-
 	//cout << "onClick: " << x << ", " << y << endl;
 }
 
 void MassSpringSystemSimulator::onMouse(int x, int y) {
+	if (m_iTestCase != 3) {
+		return;
+	}
+	if (currentlyClicking) {
+		int middleIndex = (number_rows / 2) * number_columns + number_columns / 2;
+		massPoint_list[middleIndex].position.y += 0.002 * (clickedPos.y - y);
+		massPoint_list[middleIndex].position.x += 0.002 * (x - clickedPos.x);
+	}
 	currentlyClicking = false;
+	m_mouse.x = x;
+	m_mouse.y = y;
 	//cout << "onMouse: " << x << ", " << y << endl;
 }
 
@@ -547,8 +545,4 @@ Vec3 MassSpringSystemSimulator::getPositionOfMassPoint(int index) {
 Vec3 MassSpringSystemSimulator::getVelocityOfMassPoint(int index) {
 	MassPoint p = getMassPoint(index);
 	return p.velocity;
-}
-
-void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
-
 }
