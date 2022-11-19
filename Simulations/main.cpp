@@ -20,8 +20,8 @@ using namespace GamePhysics;
 
 //#define ADAPTIVESTEP
 
-//#define TEMPLATE_DEMO
-#define MASS_SPRING_SYSTEM
+#define TEMPLATE_DEMO
+//#define MASS_SPRING_SYSTEM
 //#define RIGID_BODY_SYSTEM
 //#define SPH_SYSTEM
 
@@ -305,7 +305,7 @@ void CALLBACK OnD3D11FrameRender( ID3D11Device* pd3dDevice, ID3D11DeviceContext*
     g_pDUC->DrawFloor(pd3dImmediateContext);
 
     // Draw axis box
-     //g_pDUC->DrawBoundingBox(pd3dImmediateContext);
+     g_pDUC->DrawBoundingBox(pd3dImmediateContext);
 
 	// Draw Simulator
 	if(g_bDraw)g_pSimulator->drawFrame(pd3dImmediateContext);
