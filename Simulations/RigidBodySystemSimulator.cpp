@@ -19,7 +19,27 @@ void RigidBodySystemSimulator::reset() {
 }
 
 void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
+	DUC->setUpLighting(Vec3(), 0.4 * Vec3(1, 1, 1), 100, 0.6 * Vec3(0.97, 0.86, 1));	
+	for (int i = 0; i < rigidbodies.size(); i++) {
 
+		Mat4 matrix_scalar;
+		Mat4 matrix_rotation = Mat4(1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1);
+		Mat4 matrix_translation;
+		matrix_translation.initTranslation(rigidbodies[i].position.x, rigidbodies[i].position.y, rigidbodies[i].position.z);
+		matrix_scalar.initScaling(rigidbodies[i].size.x, rigidbodies[i].size.y, rigidbodies[i].size.z);
+		DUC->drawRigidBody(matrix_scalar * matrix_rotation * matrix_translation);
+		/*
+		cout << rigidbodies[i].position.x << " X" << endl;
+		cout << rigidbodies[i].position.y << " Y" << endl;
+		cout << rigidbodies[i].position.z << " Z" << endl;
+		*/
+	}
+
+		
+	
 }
 
 void RigidBodySystemSimulator::notifyCaseChanged(int testCase) {
@@ -28,6 +48,7 @@ void RigidBodySystemSimulator::notifyCaseChanged(int testCase) {
 	{
 	case 0:
 		cout << "Demo 1\n";
+		setUpDemo1();
 		break;
 	case 1:
 		cout << "Demo 2\n";
@@ -81,7 +102,11 @@ void RigidBodySystemSimulator::applyForceOnBody(int i, Vec3 loc, Vec3 force) {
 }
 
 void RigidBodySystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass) {
-
+	RigidBody rigidbody;
+	rigidbody.mass = mass;
+	rigidbody.position = position;
+	rigidbody.size = size;
+	rigidbodies.push_back(rigidbody);
 }
 
 void RigidBodySystemSimulator::setOrientationOf(int i, Quat orientation) {
@@ -90,4 +115,44 @@ void RigidBodySystemSimulator::setOrientationOf(int i, Quat orientation) {
 
 void RigidBodySystemSimulator::setVelocityOf(int i, Vec3 velocity) {
 
+}
+
+void RigidBodySystemSimulator::setUpDemo1() {
+	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
+	 // I0 berechnung
+	vector<Vec3> corners;
+	corners.push_back(Vec3(-0.5,-0.3,0.25));
+	corners.push_back(Vec3(-0.5, 0.3, 0.25));
+	corners.push_back(Vec3(0.5, 0.3, 0.25));
+	corners.push_back(Vec3(0.5, -0.3, 0.25));
+	corners.push_back(Vec3(-0.5, -0.3, -0.25));
+	corners.push_back(Vec3(0.5, -0.3, -0.25));
+	corners.push_back(Vec3(0.5, 0.3, -0.25));
+	corners.push_back(Vec3(-0.5, 0.3, -0.25));
+	float mass = 2.0 / 8.0;
+	
+	float xx = 0;
+	float yy = 0;
+	float zz = 0;
+	float xy = 0;
+	float xz = 0;
+	float yz = 0;
+
+	for (Vec3 c : corners) {
+		xx += c.x * c.x * mass;
+		yy += c.y * c.y * mass;
+		zz += c.z * c.z * mass;
+		xy += c.x * c.y * mass;
+		xz += c.x * c.z * mass;
+		yz += c.y * c.z * mass;
+	}
+
+	Mat4 covariance = Mat4(xx, xy, xz, 0, xy, yy, yz, 0, xz, yz, zz, 0, 0, 0, 0, 0);
+	float trace = xx + yy + zz;
+	Mat4 id = Mat4(trace, 0, 0, 0, 
+				0,trace, 0, 0,
+				0, 0, trace, 0, 
+				0, 0, 0, 0);
+	Mat4 inertia_0 =   id - covariance;
+	cout << inertia_0 << endl;
 }

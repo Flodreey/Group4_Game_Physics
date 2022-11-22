@@ -6,6 +6,12 @@
 
 #define TESTCASEUSEDTORUNTEST 2
 
+struct RigidBody {
+	Vec3 position;
+	Vec3 size;
+	int mass;
+};
+
 class RigidBodySystemSimulator:public Simulator{
 public:
 	// Construtors
@@ -31,6 +37,7 @@ public:
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
 	void setOrientationOf(int i,Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
+	void setUpDemo1();
 
 private:
 	// Attributes
@@ -42,5 +49,6 @@ private:
 	Point2D m_mouse;
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
+	vector<RigidBody> rigidbodies;
 	};
 #endif
