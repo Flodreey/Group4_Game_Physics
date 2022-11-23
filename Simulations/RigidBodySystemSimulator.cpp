@@ -149,10 +149,10 @@ void RigidBodySystemSimulator::setUpDemo1() {
 
 	Mat4 covariance = Mat4(xx, xy, xz, 0, xy, yy, yz, 0, xz, yz, zz, 0, 0, 0, 0, 0);
 	float trace = xx + yy + zz;
-	Mat4 id = Mat4(trace, 0, 0, 0, 
+	Mat4 trace_matrix = Mat4(trace, 0, 0, 0, 
 				0,trace, 0, 0,
 				0, 0, trace, 0, 
 				0, 0, 0, 0);
-	Mat4 inertia_0 =   id - covariance;
-	cout << inertia_0 << endl;
+	Mat4 inertia_0 =   trace_matrix - covariance;
+	
 }
