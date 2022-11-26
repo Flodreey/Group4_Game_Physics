@@ -7,9 +7,16 @@
 #define TESTCASEUSEDTORUNTEST 2
 
 struct RigidBody {
+	int index;
 	Vec3 position;
 	Vec3 size;
 	int mass;
+	Vec3 lin_velocity;
+	Vec3 ang_velocity;
+	Vec3 ang_momentum;
+	Quat orientation;
+	Vec3 torque;
+	Vec3 total_force;
 };
 
 class RigidBodySystemSimulator:public Simulator{
@@ -30,6 +37,7 @@ public:
 
 	// ExtraFunctions
 	int getNumberOfRigidBodies();
+	RigidBody getRigidBody(int i);
 	Vec3 getPositionOfRigidBody(int i);
 	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getAngularVelocityOfRigidBody(int i);
@@ -37,6 +45,7 @@ public:
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
 	void setOrientationOf(int i,Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
+
 	void setUpDemo1();
 
 private:
@@ -49,6 +58,7 @@ private:
 	Point2D m_mouse;
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
+
 	vector<RigidBody> rigidbodies;
 	};
 #endif

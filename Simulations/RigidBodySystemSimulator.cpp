@@ -23,13 +23,11 @@ void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateConte
 	for (int i = 0; i < rigidbodies.size(); i++) {
 
 		Mat4 matrix_scalar;
-		Mat4 matrix_rotation = Mat4(1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1);
+		Mat4 matrix_rotation;
 		Mat4 matrix_translation;
-		matrix_translation.initTranslation(rigidbodies[i].position.x, rigidbodies[i].position.y, rigidbodies[i].position.z);
 		matrix_scalar.initScaling(rigidbodies[i].size.x, rigidbodies[i].size.y, rigidbodies[i].size.z);
+		matrix_rotation = rigidbodies[i].orientation.getRotMat();
+		matrix_translation.initTranslation(rigidbodies[i].position.x, rigidbodies[i].position.y, rigidbodies[i].position.z);
 		DUC->drawRigidBody(matrix_scalar * matrix_rotation * matrix_translation);
 		/*
 		cout << rigidbodies[i].position.x << " X" << endl;
@@ -82,77 +80,132 @@ void RigidBodySystemSimulator::onMouse(int x, int y) {
 }
 
 int RigidBodySystemSimulator::getNumberOfRigidBodies() {
-	return 0;
+	return rigidbodies.size();
+}
+
+RigidBody RigidBodySystemSimulator::getRigidBody(int i) {
+	for (int j = 0; j < rigidbodies.size(); j++) {
+		if (rigidbodies[j].index == i) {
+			return rigidbodies[j];
+		}
+	}
+	cout << "You try to access a rigidbody with index " << i << ", but it doesn't exist!" << endl;
+	RigidBody dummy;
+	return dummy;
 }
 
 Vec3 RigidBodySystemSimulator::getPositionOfRigidBody(int i) {
-	return Vec3();
+	return getRigidBody(i).position;
 }
 
 Vec3 RigidBodySystemSimulator::getLinearVelocityOfRigidBody(int i) {
-	return Vec3();
+	return getRigidBody(i).lin_velocity;
 }
 
 Vec3 RigidBodySystemSimulator::getAngularVelocityOfRigidBody(int i) {
-	return Vec3();
+	return getRigidBody(i).ang_velocity;
 }
 
 void RigidBodySystemSimulator::applyForceOnBody(int i, Vec3 loc, Vec3 force) {
-
+	for (int j = 0; j < rigidbodies.size(); j++) {
+		if (rigidbodies[j].index == i) {
+			rigidbodies[j].torque += cross(loc, force);
+			rigidbodies[j].total_force += force;
+		}
+	}
 }
 
 void RigidBodySystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass) {
 	RigidBody rigidbody;
+	rigidbody.index = rigidbodies.size();
 	rigidbody.mass = mass;
 	rigidbody.position = position;
 	rigidbody.size = size;
+	rigidbody.lin_velocity = Vec3();
+	rigidbody.ang_velocity = Vec3();
+	rigidbody.ang_momentum = Vec3();
+	rigidbody.orientation = Quat();
+	rigidbody.torque = Vec3();
+	rigidbody.total_force = Vec3();
+
 	rigidbodies.push_back(rigidbody);
 }
 
 void RigidBodySystemSimulator::setOrientationOf(int i, Quat orientation) {
-
+	for (int j = 0; j < rigidbodies.size(); j++) {
+		if (rigidbodies[j].index == i) {
+			rigidbodies[j].orientation = orientation;
+		}
+	}
 }
 
 void RigidBodySystemSimulator::setVelocityOf(int i, Vec3 velocity) {
-
+	for (int j = 0; j < rigidbodies.size(); j++) {
+		if (rigidbodies[j].index == i) {
+			rigidbodies[j].lin_velocity = velocity;
+		}
+	}
 }
-
+	
 void RigidBodySystemSimulator::setUpDemo1() {
 	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
-	 // I0 berechnung
-	vector<Vec3> corners;
-	corners.push_back(Vec3(-0.5,-0.3,0.25));
-	corners.push_back(Vec3(-0.5, 0.3, 0.25));
-	corners.push_back(Vec3(0.5, 0.3, 0.25));
-	corners.push_back(Vec3(0.5, -0.3, 0.25));
-	corners.push_back(Vec3(-0.5, -0.3, -0.25));
-	corners.push_back(Vec3(0.5, -0.3, -0.25));
-	corners.push_back(Vec3(0.5, 0.3, -0.25));
-	corners.push_back(Vec3(-0.5, 0.3, -0.25));
-	float mass = 2.0 / 8.0;
+	setOrientationOf(0, Quat(Vec3(0, 0, 1), M_PI * 0.5));
+	applyForceOnBody(0, Vec3(0.3, 0.5, 0.25), Vec3(1, 1, 0));
 	
-	float xx = 0;
-	float yy = 0;
-	float zz = 0;
-	float xy = 0;
-	float xz = 0;
-	float yz = 0;
+	// calculation of basic test case and printing the solution
+	Vec3 center = getRigidBody(0).position;
+	Vec3 size = getRigidBody(0).size;
+	double mass = getRigidBody(0).mass;
+	Quat orientation = getRigidBody(0).orientation;
+	Vec3 lin_velocity = getLinearVelocityOfRigidBody(0);
+	Vec3 ang_velocity = getAngularVelocityOfRigidBody(0);
+	Vec3 ang_momentum = getRigidBody(0).ang_momentum;
+	Vec3 torque = getRigidBody(0).torque;
+	Vec3 total_force = getRigidBody(0).total_force;
 
-	for (Vec3 c : corners) {
-		xx += c.x * c.x * mass;
-		yy += c.y * c.y * mass;
-		zz += c.z * c.z * mass;
-		xy += c.x * c.y * mass;
-		xz += c.x * c.z * mass;
-		yz += c.y * c.z * mass;
-	}
+	double timestep = 2;
 
-	Mat4 covariance = Mat4(xx, xy, xz, 0, xy, yy, yz, 0, xz, yz, zz, 0, 0, 0, 0, 0);
-	float trace = xx + yy + zz;
-	Mat4 trace_matrix = Mat4(trace, 0, 0, 0, 
-				0,trace, 0, 0,
-				0, 0, trace, 0, 
-				0, 0, 0, 0);
-	Mat4 inertia_0 =   trace_matrix - covariance;
+	// calculating initial inertia tensor I_0 with given formular for rectengular box from wikipedia
+	double element1 = (1.0 / 12.0) * mass * (pow(size.y, 2) + pow(size.z, 2));
+	double element2 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.y, 2));
+	double element3 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.z, 2));
+	Mat4 initial_inertia_tensor = Mat4(element1, 0, 0, 0, 0, element2, 0, 0, 0, 0, element3, 0, 0, 0, 0, 1);
+	Mat4 initial_inertia_tensor_inverse = initial_inertia_tensor.inverse();
+
+	// calculating torque q - happens already in applyForceOnBody(...)
+
+	// euler step for position and velocity
+	center = center + timestep * lin_velocity;
+	lin_velocity = lin_velocity + timestep * (total_force / mass);
 	
+	// update the orientation (wont change because angular velocity is (0,0,0)
+	orientation = orientation + (timestep / 2) * Quat(0, ang_velocity.x, ang_velocity.y, ang_velocity.z) * orientation;
+
+	// update the angular momentum
+	ang_momentum = ang_momentum + timestep * torque;
+
+	// calculate current inverse inertia tensor
+	Mat4 rotMatrixTransposed = orientation.getRotMat();
+	rotMatrixTransposed.transpose();
+	Mat4 inertia_tensor = orientation.getRotMat() * initial_inertia_tensor_inverse * rotMatrixTransposed;
+
+	// calculate angular velocity
+	ang_velocity = inertia_tensor * ang_momentum;
+
+	// calculate world position and velocitiy at world position
+	Vec3 pos = Vec3(-0.3, -0.5, -0.25);
+	Vec3 world_pos = center + orientation.getRotMat() * pos;
+	Vec3 world_velocity = lin_velocity + cross(ang_velocity, pos);
+
+	// right solution: 
+	// linear velocity: (1, 1, 0)
+	// angular velocity: (-2.40, 4.92, -1.76)
+	// world space velocity at (-0.3, -0.5, -0.25): (-1.11, 0.93, 2.68)
+	cout << "Rigidbody with size (1, 0.6, 0.5) and mass 2 gets hit at (0.3 ,0.5, 0.25) with force (1, 1, 0)" << endl;
+	cout << "Calculating properties after timestep h = 2 ......." << endl;
+	cout << "Linear velocity: v = " << lin_velocity << endl;
+	cout << "Angular velocity w = " << ang_velocity << endl;
+	cout << "World space velocity of point "<< world_pos << ": v_i = " << world_velocity;
+
+
 }
