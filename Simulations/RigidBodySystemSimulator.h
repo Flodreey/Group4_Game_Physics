@@ -10,6 +10,10 @@ struct RigidBody {
 	Vec3 position;
 	Vec3 size;
 	int mass;
+	Vec3 linearVelocity;
+	Vec3 angularVelocity;
+	Vec3 angularMomentum;
+	Vec3 force;
 };
 
 class RigidBodySystemSimulator:public Simulator{

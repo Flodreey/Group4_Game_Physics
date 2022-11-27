@@ -82,22 +82,34 @@ void RigidBodySystemSimulator::onMouse(int x, int y) {
 }
 
 int RigidBodySystemSimulator::getNumberOfRigidBodies() {
-	return 0;
+	return rigidbodies.size();
 }
 
 Vec3 RigidBodySystemSimulator::getPositionOfRigidBody(int i) {
+	if (i < getNumberOfRigidBodies()) {
+		return rigidbodies[i].position;
+	}
 	return Vec3();
 }
 
 Vec3 RigidBodySystemSimulator::getLinearVelocityOfRigidBody(int i) {
+	if (i < getNumberOfRigidBodies()) {
+		return rigidbodies[i].linearVelocity;
+	}
 	return Vec3();
 }
 
 Vec3 RigidBodySystemSimulator::getAngularVelocityOfRigidBody(int i) {
+	if (i < getNumberOfRigidBodies()) {
+		return rigidbodies[i].angularVelocity;
+	}
 	return Vec3();
 }
 
 void RigidBodySystemSimulator::applyForceOnBody(int i, Vec3 loc, Vec3 force) {
+	if (i < getNumberOfRigidBodies()) {
+	 rigidbodies[i].force += force;
+	}
 
 }
 
@@ -154,5 +166,23 @@ void RigidBodySystemSimulator::setUpDemo1() {
 				0, 0, trace, 0, 
 				0, 0, 0, 0);
 	Mat4 inertia_0 =   trace_matrix - covariance;
-	
+
+	// torgue 
+	Vec3 torque;
+	Vec3 position = Vec3(0.3, 0.5, 0.25);
+	Vec3 force = Vec3(1, 1, 0);
+		for (auto& corner : corners) {
+			torque += cross(position - corner, force);
+	}
+		Mat4 rotate;
+		rotate.initRotationZ(90);
+		Quat angles(rotate);
+		// Momentum L
+		Vec3 momentum = 2 * torque;
+
+		Mat4 update_tensor;
+		update_tensor = rotate * inertia_0.inverse() * rotate.inverse();
+		// update angular velocity
+		Vec3 angular_velocity = update_tensor * momentum;
+
 }
