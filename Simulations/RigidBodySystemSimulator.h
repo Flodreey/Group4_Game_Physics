@@ -45,8 +45,11 @@ public:
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
 	void setOrientationOf(int i,Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
+	Mat4 calculateInitialInertiaTensor(double mass, Vec3 size);
 
 	void setUpDemo1();
+	void setUpDemo2();
+
 
 private:
 	// Attributes
