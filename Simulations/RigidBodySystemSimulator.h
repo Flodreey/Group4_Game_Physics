@@ -1,6 +1,7 @@
 #ifndef RIGIDBODYSYSTEMSIMULATOR_h
 #define RIGIDBODYSYSTEMSIMULATOR_h
 #include "Simulator.h"
+#include "collisionDetect.h"
 //add your header for your rigid body system, for e.g.,
 //#include "rigidBodySystem.h" 
 
@@ -46,9 +47,10 @@ public:
 	void setOrientationOf(int i,Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
 	Mat4 calculateInitialInertiaTensor(double mass, Vec3 size);
-
+	void RigidBodySystemSimulator::updateAfterCollision();
 	void setUpDemo1();
 	void setUpDemo2();
+	void setUpDemo3();
 
 
 private:
@@ -56,6 +58,7 @@ private:
 	// add your RigidBodySystem data members, for e.g.,
 	// RigidBodySystem * m_pRigidBodySystem; 
 	Vec3 m_externalForce;
+	int count = 0;
 
 	// UI Attributes
 	Point2D m_mouse;
@@ -63,5 +66,6 @@ private:
 	Point2D m_oldtrackmouse;
 
 	vector<RigidBody> rigidbodies;
+	CollisionInfo collision_info;
 	};
 #endif
