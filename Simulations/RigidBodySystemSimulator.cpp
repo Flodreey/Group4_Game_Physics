@@ -9,6 +9,7 @@ const char* RigidBodySystemSimulator::getTestCasesStr() {
 	return "Demo 1, Demo 2, Demo 3, Demo 4";
 }
 
+
 void RigidBodySystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 }
@@ -30,12 +31,13 @@ void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateConte
 		matrix_scalar.initScaling(rigidbodies[i].size.x, rigidbodies[i].size.y, rigidbodies[i].size.z);
 		matrix_rotation = rigidbodies[i].orientation.getRotMat();
 		matrix_translation.initTranslation(rigidbodies[i].position.x, rigidbodies[i].position.y, rigidbodies[i].position.z);
+		
 		DUC->drawRigidBody(matrix_scalar * matrix_rotation * matrix_translation);
 		world_matrices.push_back(matrix_scalar * matrix_rotation * matrix_translation);
 		
-		cout << rigidbodies[i].position.x << " X" << endl;
-		cout << rigidbodies[i].position.y << " Y" << endl;
-		cout << rigidbodies[i].position.z << " Z" << endl;
+		//cout << rigidbodies[i].position.x << " X" << endl;
+		//cout << rigidbodies[i].position.y << " Y" << endl;
+		//cout << rigidbodies[i].position.z << " Z" << endl;
 		
 	}
 
@@ -75,7 +77,7 @@ void RigidBodySystemSimulator::notifyCaseChanged(int testCase) {
 	}
 }
 
-// calculating initial inertia tensor I_0 with given formular for rectengular box from wikipedia)
+// calculating initial inertia tensor I_0 with given formular for rectengular box from wikipedia
 Mat4 RigidBodySystemSimulator::calculateInitialInertiaTensor(double mass, Vec3 size) {
 	double element1 = (1.0 / 12.0) * mass * (pow(size.y, 2) + pow(size.z, 2));
 	double element2 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.y, 2));
@@ -92,55 +94,59 @@ void RigidBodySystemSimulator::externalForcesCalculations(float timeElapsed) {
 
 void RigidBodySystemSimulator::simulateTimestep(float timeStep) {
 
-	for (int j = 0; j < rigidbodies.size(); j++) {
-		// euler step for position and velocity
-		Vec3 lin_velocity = getLinearVelocityOfRigidBody(j);
-	    Vec3 center = getRigidBody(j).position;
-		double mass = getRigidBody(j).mass;
-		Vec3 total_force = getRigidBody(j).total_force;
-		center = center + timeStep * lin_velocity;
-		lin_velocity = lin_velocity + timeStep * (total_force / mass);
-		rigidbodies[j].position = center;
-		rigidbodies[j].lin_velocity = lin_velocity;
+	// nothing should be moving in Demo 1
+	if (m_iTestCase == 0)
+		return;
 
-		// update the orientation
-		Quat orientation = getRigidBody(j).orientation;
-		Vec3 ang_velocity = getAngularVelocityOfRigidBody(j);
-		orientation = orientation + (timeStep / 2) * Quat(0, ang_velocity.x, ang_velocity.y, ang_velocity.z) * orientation;
-		rigidbodies[j].orientation = orientation;
-		// update the angular momentum
-		Vec3 torque = getRigidBody(j).torque;
-		Vec3 ang_momentum = getRigidBody(j).ang_momentum;
-		ang_momentum = ang_momentum + timeStep * torque;
-		rigidbodies[j].ang_momentum = ang_momentum;
+	for (int i = 0; i < rigidbodies.size(); i++) {
 
-		// calculate current inverse inertia tensor
-		Mat4 rotMatrixTransposed = orientation.getRotMat();
-		Vec3 size = getRigidBody(j).size;
-		rotMatrixTransposed.transpose();
-		Mat4 initial_inertia_tensor = calculateInitialInertiaTensor(mass, size);
-		Mat4 inertia_tensor = orientation.getRotMat() * initial_inertia_tensor.inverse() * rotMatrixTransposed;
+		rigidbodies[i].position += timeStep * rigidbodies[i].lin_velocity;
+		rigidbodies[i].lin_velocity += timeStep * (rigidbodies[i].total_force / rigidbodies[i].mass);
+		
+		rigidbodies[i].orientation += (timeStep / 2) * Quat(rigidbodies[i].ang_velocity.x, rigidbodies[i].ang_velocity.y, rigidbodies[i].ang_velocity.z, 0) * rigidbodies[i].orientation;
 
-		// calculate angular velocity
-		ang_velocity = inertia_tensor * ang_momentum;
-		rigidbodies[j].ang_velocity = ang_velocity;
+		rigidbodies[i].ang_momentum += timeStep * rigidbodies[i].torque;
 
-		rigidbodies[j].total_force = Vec3(0,0,0);
-		rigidbodies[j].torque = Vec3(0,0,0);
+		Mat4 rotMatrix = rigidbodies[i].orientation.getRotMat();
+		Mat4 rotMatrix_transposed = rotMatrix;
+		rotMatrix_transposed.transpose();
+		rigidbodies[i].current_inertiaTensor_inversed = rotMatrix * rigidbodies[i].initial_inertiaTensor_inversed * rotMatrix_transposed;
+
+		rigidbodies[i].ang_velocity = rigidbodies[i].current_inertiaTensor_inversed * rigidbodies[i].ang_momentum;
+
+		rigidbodies[i].torque = 0;
+		rigidbodies[i].total_force = 0;
 	}
 
 }
 
 void RigidBodySystemSimulator::onClick(int x, int y) {
+	/*
 	if (m_iTestCase == 1)
 	{
 		applyForceOnBody(0, Vec3(-x,- y, 0), Vec3(1, 1, 0));
 	}
+	*/
 
+	// for debugging: when clicking bottom left part of screen, print information about first rigidbody
+	if (x >= 1000 && y >= 800) {
+		cout << "--------------------------------------------" << endl;
+		cout << "index: " << rigidbodies[0].index << endl;
+		cout << "position: " << rigidbodies[0].position << endl;
+		cout << "size: " << rigidbodies[0].size << endl;
+		cout << "mass: " << rigidbodies[0].mass << endl;
+		cout << "lin_velocity: " << rigidbodies[0].lin_velocity << endl;
+		cout << "ang_velocity: " << rigidbodies[0].ang_velocity << endl;
+		cout << "ang_momentum: " << rigidbodies[0].ang_momentum << endl;
+		cout << "orientation: " << rigidbodies[0].orientation << endl;
+		cout << "torque: " << rigidbodies[0].torque << endl;
+		cout << "total_force: " << rigidbodies[0].total_force << endl;
+		cout << "--------------------------------------------" << endl;
+	}
 }
 
 void RigidBodySystemSimulator::onMouse(int x, int y) {
-
+	//cout << "x: " << x << ", y: " << y << endl;
 }
 
 int RigidBodySystemSimulator::getNumberOfRigidBodies() {
@@ -171,6 +177,7 @@ Vec3 RigidBodySystemSimulator::getAngularVelocityOfRigidBody(int i) {
 }
 
 void RigidBodySystemSimulator::applyForceOnBody(int i, Vec3 loc, Vec3 force) {
+	//cout << "force applied" << endl;
 	for (int j = 0; j < rigidbodies.size(); j++) {
 		if (rigidbodies[j].index == i) {
 			rigidbodies[j].torque += cross(loc, force);
@@ -189,6 +196,8 @@ void RigidBodySystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass) 
 	rigidbody.ang_velocity = Vec3();
 	rigidbody.ang_momentum = Vec3();
 	rigidbody.orientation = Quat();
+	rigidbody.initial_inertiaTensor_inversed = calculateInitialInertiaTensor(mass, size).inverse();
+	rigidbody.current_inertiaTensor_inversed = Mat4();
 	rigidbody.torque = Vec3();
 	rigidbody.total_force = Vec3();
 
@@ -269,49 +278,58 @@ void RigidBodySystemSimulator::setUpDemo1() {
 	applyForceOnBody(0, Vec3(0.3, 0.5, 0.25), Vec3(1, 1, 0));
 	
 	// calculation of basic test case and printing the solution
-	Vec3 center = getRigidBody(0).position;
+	Vec3 position = getRigidBody(0).position;
 	Vec3 size = getRigidBody(0).size;
 	double mass = getRigidBody(0).mass;
 	Quat orientation = getRigidBody(0).orientation;
 	Vec3 lin_velocity = getLinearVelocityOfRigidBody(0);
 	Vec3 ang_velocity = getAngularVelocityOfRigidBody(0);
 	Vec3 ang_momentum = getRigidBody(0).ang_momentum;
+	Mat4 initial_inertiaTensor_inversed = getRigidBody(0).initial_inertiaTensor_inversed;
+	Mat4 current_inertiaTensor_inversed = getRigidBody(0).current_inertiaTensor_inversed;
 	Vec3 torque = getRigidBody(0).torque;
 	Vec3 total_force = getRigidBody(0).total_force;
 
 	double timestep = 2;
 
-	// calculating initial inertia tensor I_0 with given formular for rectengular box from wikipedia
-	double element1 = (1.0 / 12.0) * mass * (pow(size.y, 2) + pow(size.z, 2));
-	double element2 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.y, 2));
-	double element3 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.z, 2));
-	Mat4 initial_inertia_tensor = Mat4(element1, 0, 0, 0, 0, element2, 0, 0, 0, 0, element3, 0, 0, 0, 0, 1);
-	Mat4 initial_inertia_tensor_inverse = initial_inertia_tensor.inverse();
+	Mat4 rotMatrix;
+	Mat4 rotMatrix_transposed;
 
-	// calculating torque q - happens already in applyForceOnBody(...)
+	// pre-computing inversed initial inertia tensor I_0 - happens already in addRigidBody(...)
+
+	// initializing current inverse inertia tensor
+	rotMatrix = orientation.getRotMat();
+	rotMatrix_transposed = rotMatrix;
+	rotMatrix_transposed.transpose();
+	current_inertiaTensor_inversed = rotMatrix * initial_inertiaTensor_inversed * rotMatrix_transposed;
+
+	// initializing angular velocity w (will be (0, 0, 0) because ang_momentum is (0, 0, 0))
+	ang_velocity = current_inertiaTensor_inversed * ang_momentum;
+
+	// calculating total force F and torque q - happens already in applyForceOnBody(...)
 
 	// euler step for position and velocity
-	center = center + timestep * lin_velocity;
+	position = position + timestep * lin_velocity;
 	lin_velocity = lin_velocity + timestep * (total_force / mass);
 	
 	// update the orientation (wont change because angular velocity is (0,0,0)
-	orientation = orientation + (timestep / 2) * Quat(0, ang_velocity.x, ang_velocity.y, ang_velocity.z) * orientation;
+	orientation = orientation + (timestep / 2) * Quat(ang_velocity.x, ang_velocity.y, ang_velocity.z, 0) * orientation;
 
 	// update the angular momentum
 	ang_momentum = ang_momentum + timestep * torque;
 
-	// calculate current inverse inertia tensor
-	Mat4 rotMatrixTransposed = orientation.getRotMat();
-	rotMatrixTransposed.transpose();
-	Mat4 inertia_tensor = orientation.getRotMat() * initial_inertia_tensor_inverse * rotMatrixTransposed;
+	// update current inverse inertia tensor
+	rotMatrix = orientation.getRotMat();
+	rotMatrix_transposed = rotMatrix;
+	rotMatrix_transposed.transpose();
+	Mat4 inertia_tensor = rotMatrix * initial_inertiaTensor_inversed * rotMatrix_transposed;
 
-	// calculate angular velocity
+	// update angular velocity
 	ang_velocity = inertia_tensor * ang_momentum;
 
-	// calculate world position and velocitiy at world position
+	// calculate world space velocity at (-0.3, -0.5, -0.25)
 	Vec3 pos = Vec3(-0.3, -0.5, -0.25);
-	Vec3 world_pos = center + orientation.getRotMat() * pos;
-	Vec3 world_velocity = lin_velocity + cross(ang_velocity, pos);
+	Vec3 pos_velocity = lin_velocity + cross(ang_velocity, pos);
 
 	// right solution: 
 	// linear velocity: (1, 1, 0)
@@ -321,29 +339,29 @@ void RigidBodySystemSimulator::setUpDemo1() {
 	cout << "Calculating properties after timestep h = 2 ......." << endl;
 	cout << "Linear velocity: v = " << lin_velocity << endl;
 	cout << "Angular velocity w = " << ang_velocity << endl;
-	cout << "World space velocity of point "<< world_pos << ": v_i = " << world_velocity;
+	cout << "World space velocity of point "<< pos << ": v_i = " << pos_velocity << endl;
 
 
 }
 
 void RigidBodySystemSimulator::setUpDemo2() { 
 	rigidbodies.clear();
-	// start conditions
+
+	// setup for simple rigidbody simulation of worksheet
 	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
 	setOrientationOf(0, Quat(Vec3(0, 0, 1), M_PI * 0.5));
 	applyForceOnBody(0, Vec3(0.3, 0.5, 0.25), Vec3(1, 1, 0));
-	//simulateTimestep(0.05);
 }
 
 
 void RigidBodySystemSimulator::setUpDemo3() {
 	rigidbodies.clear();
+
 	// start conditions
 	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
 	addRigidBody(Vec3(1.5, 0, 0), Vec3(1, 0.6, 0.5), 2);
 	setOrientationOf(1, Quat(Vec3(1, 1, 0), M_PI * .5));
 	setVelocityOf(1, Vec3(-1, 0, 0));
-	//simulateTimestep(0.05);
 }
 
 

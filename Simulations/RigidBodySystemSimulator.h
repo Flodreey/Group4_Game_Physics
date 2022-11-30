@@ -16,6 +16,8 @@ struct RigidBody {
 	Vec3 ang_velocity;
 	Vec3 ang_momentum;
 	Quat orientation;
+	Mat4 initial_inertiaTensor_inversed;
+	Mat4 current_inertiaTensor_inversed;
 	Vec3 torque;
 	Vec3 total_force;
 };
@@ -47,11 +49,10 @@ public:
 	void setOrientationOf(int i,Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
 	Mat4 calculateInitialInertiaTensor(double mass, Vec3 size);
-	void RigidBodySystemSimulator::updateAfterCollision();
+	void updateAfterCollision();
 	void setUpDemo1();
 	void setUpDemo2();
 	void setUpDemo3();
-
 
 private:
 	// Attributes
