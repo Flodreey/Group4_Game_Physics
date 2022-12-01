@@ -79,9 +79,9 @@ void RigidBodySystemSimulator::notifyCaseChanged(int testCase) {
 
 // calculating initial inertia tensor I_0 with given formular for rectengular box from wikipedia
 Mat4 RigidBodySystemSimulator::calculateInitialInertiaTensor(double mass, Vec3 size) {
-	double element1 = (1.0 / 12.0) * mass * (pow(size.y, 2) + pow(size.z, 2));
-	double element2 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.y, 2));
-	double element3 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.z, 2));
+	double element1 = (1.0 / 12.0) * mass * (pow(size.z, 2) + pow(size.y, 2));
+	double element2 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.z, 2));
+	double element3 = (1.0 / 12.0) * mass * (pow(size.x, 2) + pow(size.y, 2));
 	Mat4 initial_inertia_tensor = Mat4(element1, 0, 0, 0, 0, element2, 0, 0, 0, 0, element3, 0, 0, 0, 0, 1);
 	return initial_inertia_tensor;
 }
