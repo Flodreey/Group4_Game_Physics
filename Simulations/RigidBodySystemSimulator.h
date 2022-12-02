@@ -53,6 +53,7 @@ public:
 	void setUpDemo1();
 	void setUpDemo2();
 	void setUpDemo3();
+	void setUpDemo4();
 
 private:
 	// Attributes
@@ -62,9 +63,8 @@ private:
 	int count = 0;
 
 	// UI Attributes
-	Point2D m_mouse;
-	Point2D m_trackmouse;
-	Point2D m_oldtrackmouse;
+	Vec3 mouseForceVec;
+	int selectedBodyIndex;
 
 	vector<RigidBody> rigidbodies;
 	CollisionInfo collision_info;

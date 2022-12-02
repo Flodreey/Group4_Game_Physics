@@ -3,6 +3,8 @@
 
 RigidBodySystemSimulator::RigidBodySystemSimulator() {
 	m_iTestCase = 0;
+	selectedBodyIndex = 0;
+	mouseForceVec = Vec3();
 }
 
 const char* RigidBodySystemSimulator::getTestCasesStr() {
@@ -12,12 +14,15 @@ const char* RigidBodySystemSimulator::getTestCasesStr() {
 
 void RigidBodySystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
+
+	if (m_iTestCase == 0)
+		return;
+
+	TwAddVarRW(DUC->g_pTweakBar, "Selected Body", TW_TYPE_INT32, &selectedBodyIndex, "min=0, max=2");
 }
 
 void RigidBodySystemSimulator::reset() {
-	m_mouse.x = m_mouse.y = 0;
-	m_trackmouse.x = m_trackmouse.y = 0;
-	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
+	
 }
 
 void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
@@ -39,6 +44,22 @@ void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateConte
 		//cout << rigidbodies[i].position.y << " Y" << endl;
 		//cout << rigidbodies[i].position.z << " Z" << endl;
 		
+	}
+
+	// draw red force vector (only in Demo 2 and Demo 4) 
+	if ((m_iTestCase == 1 || m_iTestCase == 3) && selectedBodyIndex < getNumberOfRigidBodies()) {
+		DUC->beginLine();
+
+		Vec3 forcePoint;
+		Vec3 size = rigidbodies[selectedBodyIndex].size;
+		forcePoint = Vec3(size.x/2, size.y/2, size.z/2); // local point
+		Mat4 rotMatrix = rigidbodies[selectedBodyIndex].orientation.getRotMat();
+		forcePoint = rigidbodies[selectedBodyIndex].position + rotMatrix.transformVector(forcePoint); // space point
+
+		Vec3 start = forcePoint;
+		Vec3 end = start + mouseForceVec;
+		DUC->drawLine(start, Vec3(1, 0, 0), end, Vec3(1, 0, 0));
+		DUC->endLine();
 	}
 
 	if (m_iTestCase == 2 && count == 0) {
@@ -70,6 +91,7 @@ void RigidBodySystemSimulator::notifyCaseChanged(int testCase) {
 		break;
 	case 3:
 		cout << "Demo 4\n";
+		setUpDemo4();
 		break;
 	default:
 		cout << "Empty Test!\n";
@@ -121,32 +143,47 @@ void RigidBodySystemSimulator::simulateTimestep(float timeStep) {
 }
 
 void RigidBodySystemSimulator::onClick(int x, int y) {
-	/*
-	if (m_iTestCase == 1)
-	{
-		applyForceOnBody(0, Vec3(-x,- y, 0), Vec3(1, 1, 0));
-	}
-	*/
+	//cout << "clicked: x: " << x << ", y: " << y << endl;
 
-	// for debugging: when clicking bottom left part of screen, print information about first rigidbody
-	if (x >= 1000 && y >= 800) {
-		cout << "--------------------------------------------" << endl;
-		cout << "index: " << rigidbodies[0].index << endl;
-		cout << "position: " << rigidbodies[0].position << endl;
-		cout << "size: " << rigidbodies[0].size << endl;
-		cout << "mass: " << rigidbodies[0].mass << endl;
-		cout << "lin_velocity: " << rigidbodies[0].lin_velocity << endl;
-		cout << "ang_velocity: " << rigidbodies[0].ang_velocity << endl;
-		cout << "ang_momentum: " << rigidbodies[0].ang_momentum << endl;
-		cout << "orientation: " << rigidbodies[0].orientation << endl;
-		cout << "torque: " << rigidbodies[0].torque << endl;
-		cout << "total_force: " << rigidbodies[0].total_force << endl;
-		cout << "--------------------------------------------" << endl;
+	if (m_iTestCase == 0 || m_iTestCase == 2) {
+		return;
+	}
+
+	// user can't apply force if he clicks into the tweakbar UI
+	if (x <= 220 && y <= 340) {
+		mouseForceVec = Vec3();
+		return;
+	}
+
+	// force gets applied when user clicks
+	if (selectedBodyIndex < getNumberOfRigidBodies()) {
+		// force should be applied at on of the corners
+		Vec3 forcePoint;
+		Vec3 size = rigidbodies[selectedBodyIndex].size;
+		forcePoint = Vec3(size.x / 2, size.y / 2, size.z / 2); // local point
+		Mat4 rotMatrix = rigidbodies[selectedBodyIndex].orientation.getRotMat();
+		forcePoint = rigidbodies[selectedBodyIndex].position + rotMatrix.transformVector(forcePoint); // space point
+
+		applyForceOnBody(selectedBodyIndex, forcePoint, mouseForceVec);
 	}
 }
 
 void RigidBodySystemSimulator::onMouse(int x, int y) {
-	//cout << "x: " << x << ", y: " << y << endl;
+	//cout << "mouse: x: " << x << ", y: " << y << endl;
+
+	// there is no red force vector if mouse is over tweakbar UI
+	if (x <= 220 && y <= 340) {
+		mouseForceVec = Vec3();
+		return;
+	}
+
+	// rotation of the mouseForceVec is depending on position of mouse
+	double degreeX = (x / 500.0) * 360.0;
+	double degreeY = (y / 500.0) * 360.0;
+	Mat4 rotMatrix;
+	rotMatrix.initRotationXYZ(degreeY, degreeX, 0);
+	mouseForceVec = Vec3(0, 0, 1);
+	mouseForceVec = rotMatrix.transformVector(mouseForceVec);
 }
 
 int RigidBodySystemSimulator::getNumberOfRigidBodies() {
@@ -180,7 +217,7 @@ void RigidBodySystemSimulator::applyForceOnBody(int i, Vec3 loc, Vec3 force) {
 	//cout << "force applied" << endl;
 	for (int j = 0; j < rigidbodies.size(); j++) {
 		if (rigidbodies[j].index == i) {
-			rigidbodies[j].torque += cross(loc, force);
+			rigidbodies[j].torque += cross(loc - rigidbodies[j].position, force);
 			rigidbodies[j].total_force += force;
 		}
 	}
@@ -195,7 +232,7 @@ void RigidBodySystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass) 
 	rigidbody.lin_velocity = Vec3();
 	rigidbody.ang_velocity = Vec3();
 	rigidbody.ang_momentum = Vec3();
-	rigidbody.orientation = Quat();
+	rigidbody.orientation = Quat(0, 0, 0, 1);
 	rigidbody.initial_inertiaTensor_inversed = calculateInitialInertiaTensor(mass, size).inverse();
 	rigidbody.current_inertiaTensor_inversed = Mat4();
 	rigidbody.torque = Vec3();
@@ -360,8 +397,15 @@ void RigidBodySystemSimulator::setUpDemo3() {
 	// start conditions
 	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
 	addRigidBody(Vec3(1.5, 0, 0), Vec3(1, 0.6, 0.5), 2);
-	setOrientationOf(1, Quat(Vec3(1, 1, 0), M_PI * .5));
+	setOrientationOf(1, Quat(M_PI * 0.25, M_PI * 0.25, 0));
 	setVelocityOf(1, Vec3(-1, 0, 0));
+}
+
+void RigidBodySystemSimulator::setUpDemo4() {
+	rigidbodies.clear();
+
+	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
+	addRigidBody(Vec3(1.5, 0, 0), Vec3(1, 1, 1), 2);
 }
 
 
