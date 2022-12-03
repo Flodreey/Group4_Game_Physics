@@ -15,11 +15,9 @@ const char* RigidBodySystemSimulator::getTestCasesStr() {
 void RigidBodySystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 
-	if (m_iTestCase == 0 || m_iTestCase == 2)
-		return;
-
-	// user can decide which body he manipulates currently
-	TwAddVarRW(DUC->g_pTweakBar, "Selected Body", TW_TYPE_INT32, &selectedBodyIndex, "min=0, max=100");
+	// user can decide which body he manipulates currently (only in demo 4)
+	if (m_iTestCase == 3)
+		TwAddVarRW(DUC->g_pTweakBar, "Selected Body", TW_TYPE_INT32, &selectedBodyIndex, "min=0, max=100");
 }
 
 void RigidBodySystemSimulator::reset() {
@@ -27,8 +25,16 @@ void RigidBodySystemSimulator::reset() {
 }
 
 void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
-	DUC->setUpLighting(Vec3(), 0.4 * Vec3(1, 1, 1), 100, 0.6 * Vec3(0.97, 0.86, 1));
 	for (int i = 0; i < rigidbodies.size(); i++) {
+
+		// the selected rigidbody gets a different color (only in demo 4)
+		Vec3 color;
+		if (i == selectedBodyIndex && m_iTestCase == 3)
+			color = 0.6 * Vec3(1, 0.65, 0);
+		else 
+			color = 0.6 * Vec3(0.97, 0.86, 1);
+
+		DUC->setUpLighting(Vec3(), 0.4 * Vec3(1, 1, 1), 100, color);
 
 		Mat4 matrix_scalar;
 		Mat4 matrix_rotation;
@@ -130,6 +136,32 @@ void RigidBodySystemSimulator::simulateTimestep(float timeStep) {
 		rigidbodies[i].total_force = 0;
 	}
 
+	// check collisions between every possible pair of rigidbodies
+	for (int i = 0; i < getNumberOfRigidBodies(); i++) {
+		for (int j = i + 1; j < getNumberOfRigidBodies(); j++) {
+			Mat4 matrixA = getTransformationMatrix(i);
+			Mat4 matrixB = getTransformationMatrix(j);
+			CollisionInfo info = checkCollisionSAT(matrixA, matrixB);
+			if (info.isValid) {
+				double bounciness = 1;
+				double impulse = calculateImpulse(bounciness, rigidbodies[i], rigidbodies[j], info);
+				//cout << "Collsion detected!" << endl;
+
+				rigidbodies[i].lin_velocity += (impulse * info.normalWorld) / rigidbodies[i].mass;
+				rigidbodies[j].lin_velocity -= (impulse * info.normalWorld) / rigidbodies[j].mass;
+
+				Vec3 rel_collision_pointA = info.collisionPointWorld - rigidbodies[i].position;
+				Vec3 rel_collision_pointB = info.collisionPointWorld - rigidbodies[j].position;
+				rigidbodies[i].ang_momentum += cross(rel_collision_pointA, impulse * info.normalWorld);
+				rigidbodies[j].ang_momentum -= cross(rel_collision_pointB, impulse * info.normalWorld);
+
+				// maybe fixes the problem that rigidbodies are stuck together
+				rigidbodies[i].position += info.normalWorld * info.depth;
+			}
+		}
+	}
+
+	/*
 	// check for collisions in Demo 3
 	if (m_iTestCase == 2) {
 
@@ -145,7 +177,7 @@ void RigidBodySystemSimulator::simulateTimestep(float timeStep) {
 			rigidbodies[1].lin_velocity -= (impulse * info.normalWorld) / rigidbodies[1].mass;
 
 			Vec3 rel_collision_pointA = info.collisionPointWorld - rigidbodies[0].position;
-			Vec3 rel_collision_pointB = info.collisionPointWorld - rigidbodies[0].position;
+			Vec3 rel_collision_pointB = info.collisionPointWorld - rigidbodies[1].position;
 			rigidbodies[0].ang_momentum += cross(rel_collision_pointA, impulse * info.normalWorld);
 			rigidbodies[1].ang_momentum -= cross(rel_collision_pointB, impulse * info.normalWorld);
 
@@ -153,6 +185,7 @@ void RigidBodySystemSimulator::simulateTimestep(float timeStep) {
 			rigidbodies[0].position += info.normalWorld * info.depth;
 		}
 	}
+	*/
 
 }
 
@@ -380,11 +413,13 @@ void RigidBodySystemSimulator::setUpDemo1() {
 	// linear velocity: (1, 1, 0)
 	// angular velocity: (-2.40, 4.92, -1.76)
 	// world space velocity at (-0.3, -0.5, -0.25): (-1.11, 0.93, 2.68)
+	cout << "---------------------------------------------------------------------------------------------------------" << endl;
 	cout << "Rigidbody with size (1, 0.6, 0.5) and mass 2 gets hit at (0.3 ,0.5, 0.25) with force (1, 1, 0)" << endl;
-	cout << "Calculating properties after timestep h = 2 ......." << endl;
+	cout << "Calculating properties after timestep h = 2 ......." << endl << endl;
 	cout << "Linear velocity: v = " << lin_velocity << endl;
 	cout << "Angular velocity w = " << ang_velocity << endl;
 	cout << "World space velocity of point "<< pos << ": v_i = " << pos_velocity << endl;
+	cout << "---------------------------------------------------------------------------------------------------------" << endl;
 
 
 }
@@ -406,17 +441,26 @@ void RigidBodySystemSimulator::setUpDemo3() {
 	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
 	addRigidBody(Vec3(1.5, 0.2, 0), Vec3(1, 0.6, 0.5), 2);
 	setOrientationOf(1, Quat(M_PI * 0.25, M_PI * 0.25, 0));
-	//applyForceOnBody(1, Vec3(1.5, 0.2, 0), Vec3(-2, 0, 0));
+	applyForceOnBody(1, Vec3(1.5, 0.2, 0), Vec3(-2, 0, 0));
 
-	// produces error!!
-	applyForceOnBody(1, Vec3(1.5, 0.1, 0), Vec3(-5, -2, 0));
+	// produces error!! -- not anymore, but not so sure...
+	//applyForceOnBody(1, Vec3(-1.5, 0.1, 0), Vec3(5, -2, 0));
 }
 
 void RigidBodySystemSimulator::setUpDemo4() {
 	rigidbodies.clear();
 
-	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
-	addRigidBody(Vec3(1.5, 0, 0), Vec3(1, 1, 1), 2);
+	// creates a big cube consisting of 3 x 3 x 3 smaller cubes
+	double distance = 0.5;
+	double box_size = 0.3;
+
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			for (int k = -1; k <= 1; k++) {
+				addRigidBody(Vec3(i * distance, j * distance, k * distance), Vec3(box_size, box_size, box_size), 1);
+			}
+		}
+	}
 }
 
 
