@@ -50,6 +50,8 @@ public:
 	void setVelocityOf(int i, Vec3 velocity);
 	Mat4 calculateInitialInertiaTensor(double mass, Vec3 size);
 	void updateAfterCollision();
+	Mat4 getTransformationMatrix(int i);
+	double calculateImpulse(double bounciness, RigidBody bodyA, RigidBody bodyB, CollisionInfo collisionInfo);
 	void setUpDemo1();
 	void setUpDemo2();
 	void setUpDemo3();

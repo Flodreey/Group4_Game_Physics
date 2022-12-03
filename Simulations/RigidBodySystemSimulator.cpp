@@ -15,10 +15,11 @@ const char* RigidBodySystemSimulator::getTestCasesStr() {
 void RigidBodySystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 
-	if (m_iTestCase == 0)
+	if (m_iTestCase == 0 || m_iTestCase == 2)
 		return;
 
-	TwAddVarRW(DUC->g_pTweakBar, "Selected Body", TW_TYPE_INT32, &selectedBodyIndex, "min=0, max=2");
+	// user can decide which body he manipulates currently
+	TwAddVarRW(DUC->g_pTweakBar, "Selected Body", TW_TYPE_INT32, &selectedBodyIndex, "min=0, max=100");
 }
 
 void RigidBodySystemSimulator::reset() {
@@ -27,7 +28,6 @@ void RigidBodySystemSimulator::reset() {
 
 void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
 	DUC->setUpLighting(Vec3(), 0.4 * Vec3(1, 1, 1), 100, 0.6 * Vec3(0.97, 0.86, 1));
-	vector<Mat4> world_matrices;
 	for (int i = 0; i < rigidbodies.size(); i++) {
 
 		Mat4 matrix_scalar;
@@ -38,7 +38,6 @@ void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateConte
 		matrix_translation.initTranslation(rigidbodies[i].position.x, rigidbodies[i].position.y, rigidbodies[i].position.z);
 		
 		DUC->drawRigidBody(matrix_scalar * matrix_rotation * matrix_translation);
-		world_matrices.push_back(matrix_scalar * matrix_rotation * matrix_translation);
 		
 		//cout << rigidbodies[i].position.x << " X" << endl;
 		//cout << rigidbodies[i].position.y << " Y" << endl;
@@ -46,13 +45,13 @@ void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateConte
 		
 	}
 
-	// draw red force vector (only in Demo 2 and Demo 4) 
+	// draw red force vector (only in Demo 2 and Demo 4) from one of the bodiy's corners
 	if ((m_iTestCase == 1 || m_iTestCase == 3) && selectedBodyIndex < getNumberOfRigidBodies()) {
 		DUC->beginLine();
 
 		Vec3 forcePoint;
 		Vec3 size = rigidbodies[selectedBodyIndex].size;
-		forcePoint = Vec3(size.x/2, size.y/2, size.z/2); // local point
+		forcePoint = Vec3(size.x / 2, size.y / 2, size.z / 2); // local point
 		Mat4 rotMatrix = rigidbodies[selectedBodyIndex].orientation.getRotMat();
 		forcePoint = rigidbodies[selectedBodyIndex].position + rotMatrix.transformVector(forcePoint); // space point
 
@@ -60,15 +59,6 @@ void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateConte
 		Vec3 end = start + mouseForceVec;
 		DUC->drawLine(start, Vec3(1, 0, 0), end, Vec3(1, 0, 0));
 		DUC->endLine();
-	}
-
-	if (m_iTestCase == 2 && count == 0) {
-		CollisionInfo info = checkCollisionSAT(world_matrices[0], world_matrices[1]);
-		if (info.isValid) {
-			cout << info.isValid << "Demo 1\n";
-			updateAfterCollision();
-			count++;
-		}
 	}
     
 }
@@ -140,6 +130,74 @@ void RigidBodySystemSimulator::simulateTimestep(float timeStep) {
 		rigidbodies[i].total_force = 0;
 	}
 
+	// check for collisions in Demo 3
+	if (m_iTestCase == 2) {
+
+		Mat4 matrixA = getTransformationMatrix(0);
+		Mat4 matrixB = getTransformationMatrix(1);
+		CollisionInfo info = checkCollisionSAT(matrixA, matrixB);
+		if (info.isValid) {
+			double impulse = calculateImpulse(1, rigidbodies[0], rigidbodies[1], info);
+			cout << "Collsion detected!" << endl;
+			cout << "Normal: " << info.normalWorld << endl;
+
+			rigidbodies[0].lin_velocity += (impulse * info.normalWorld) / rigidbodies[0].mass;
+			rigidbodies[1].lin_velocity -= (impulse * info.normalWorld) / rigidbodies[1].mass;
+
+			Vec3 rel_collision_pointA = info.collisionPointWorld - rigidbodies[0].position;
+			Vec3 rel_collision_pointB = info.collisionPointWorld - rigidbodies[0].position;
+			rigidbodies[0].ang_momentum += cross(rel_collision_pointA, impulse * info.normalWorld);
+			rigidbodies[1].ang_momentum -= cross(rel_collision_pointB, impulse * info.normalWorld);
+
+			// maybe fixes the problem that rigidbodies are stuck together
+			rigidbodies[0].position += info.normalWorld * info.depth;
+		}
+	}
+
+}
+
+Mat4 RigidBodySystemSimulator::getTransformationMatrix(int i) {
+	RigidBody rigid = getRigidBody(i);
+	
+	Mat4 scaleMat;
+	scaleMat.initScaling(rigid.size.x, rigid.size.y, rigid.size.z);
+
+	Mat4 rotMat = rigid.orientation.getRotMat();
+
+	Mat4 translMat;
+	translMat.initTranslation(rigid.position.x, rigid.position.y, rigid.position.z);
+
+	return scaleMat * rotMat * translMat;
+}
+
+double RigidBodySystemSimulator::calculateImpulse(double bounciness, RigidBody bodyA, RigidBody bodyB, CollisionInfo info) {
+
+	// collision points relative to the center of mass of bodyA and bodyB
+	Vec3 x_a = info.collisionPointWorld - bodyA.position;
+	Vec3 x_b = info.collisionPointWorld - bodyB.position;
+
+	// velocity at collision point x_a of bodyA
+	Vec3 vel_a = bodyA.lin_velocity + cross(bodyA.ang_velocity, x_a);
+	// velocity at collision point x_b of bodyB
+	Vec3 vel_b = bodyB.lin_velocity + cross(bodyB.ang_velocity, x_b);
+	// relative velocity of the collision
+	Vec3 rel_vel = vel_a - vel_b;
+
+	Vec3 normal = info.normalWorld;
+
+	double massA = bodyA.mass;
+	double massB = bodyB.mass;
+
+	Mat4 inertia_a = bodyA.current_inertiaTensor_inversed;
+	Mat4 inertia_b = bodyB.current_inertiaTensor_inversed;
+
+	// fill everything into the formula
+	double numerator = dot(- (1 + bounciness) * rel_vel, normal);
+	Vec3 factor1 = cross(inertia_a * cross(x_a, normal), x_a);
+	Vec3 factor2 = cross(inertia_b * cross(x_b, normal), x_b);
+	double denominator = (1.0 / massA) + (1.0 / massB) + dot(factor1 + factor2, normal);
+
+	return numerator / denominator;
 }
 
 void RigidBodySystemSimulator::onClick(int x, int y) {
@@ -257,56 +315,6 @@ void RigidBodySystemSimulator::setVelocityOf(int i, Vec3 velocity) {
 		}
 	}
 }
-
-
-void RigidBodySystemSimulator::updateAfterCollision() {
-
-	Vec3 relativeA = rigidbodies[0].position - collision_info.collisionPointWorld;
-	Vec3 relativeB = rigidbodies[1].position - collision_info.collisionPointWorld;
-	Vec3 velocity_A = rigidbodies[1].lin_velocity + cross(rigidbodies[0].ang_velocity, relativeA);
-	Vec3 velocity_B = rigidbodies[1].lin_velocity + cross(rigidbodies[1].ang_velocity, relativeB);
-	Vec3 velocity_rel = velocity_A - velocity_B;
-	cout << "relative velocity A" << velocity_A << endl;
-	cout << "relative velocity B" << velocity_B << endl;
-	cout << "relative velocity " << velocity_rel << endl;
-	// update with coefficient and c parameter which will be 0.5 because I do not know which is better
-	velocity_rel = -(1 - 0.5) * velocity_rel;
-	double zaehler = dot(-(1 - 0.5) * velocity_rel, collision_info.normalWorld);
-	// 1/Ma + 1/Mb
-	double masses = 1.0 / rigidbodies[0].mass + 1.0 / rigidbodies[1].mass;
-
-	//initial interia a und b with inverse
-	Mat4 a_inverse = calculateInitialInertiaTensor(rigidbodies[0].mass, rigidbodies[0].position).inverse();
-	Mat4 b_inverse = calculateInitialInertiaTensor(rigidbodies[1].mass, rigidbodies[1].position).inverse();
-	//
-	Vec3 xaN = a_inverse.transformVector(cross(relativeA, collision_info.normalWorld));
-	Vec3 xbN = b_inverse.transformVector(cross(relativeB, collision_info.normalWorld));
-	xaN = cross(xaN, relativeA);
-	xbN = cross(xbN, relativeB);
-	double nenner = masses + dot(xaN + xbN, collision_info.normalWorld);
-
-	// impulse
-	double impulse = zaehler / nenner;
-
-	cout << "impulse " << impulse << endl;
-	cout << "zaehler " << zaehler<< endl;
-	cout << "nenner " << nenner << endl;
-	
-	rigidbodies[0].lin_velocity = rigidbodies[0].lin_velocity + (impulse * collision_info.normalWorld) / rigidbodies[0].mass;
-	rigidbodies[1].lin_velocity = rigidbodies[1].lin_velocity + (impulse * collision_info.normalWorld) / rigidbodies[1].mass;
-	
-	rigidbodies[0].ang_momentum = rigidbodies[0].ang_momentum +  cross(relativeA, impulse * collision_info.normalWorld);
-	rigidbodies[1].ang_momentum = rigidbodies[1].ang_momentum +  cross(relativeB, impulse * collision_info.normalWorld);
-
-	cout << "Linear velocity A " << rigidbodies[0].lin_velocity << endl;
-	cout << "Linear velocity B " << rigidbodies[1].lin_velocity << endl;
-	cout << "Angular Momentum A " << rigidbodies[0].ang_momentum << endl;
-	cout << "Angular Momentum B " << rigidbodies[1].ang_momentum << endl;
-
-	//rigidbodies[0].position = rigidbodies[0].position + collision_info.normalWorld * collision_info.depth;
-	//rigidbodies[1].position = rigidbodies[1].position - collision_info.normalWorld * collision_info.depth;
-
-}
 	
 void RigidBodySystemSimulator::setUpDemo1() {
 	rigidbodies.clear();
@@ -396,9 +404,12 @@ void RigidBodySystemSimulator::setUpDemo3() {
 
 	// start conditions
 	addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
-	addRigidBody(Vec3(1.5, 0, 0), Vec3(1, 0.6, 0.5), 2);
+	addRigidBody(Vec3(1.5, 0.2, 0), Vec3(1, 0.6, 0.5), 2);
 	setOrientationOf(1, Quat(M_PI * 0.25, M_PI * 0.25, 0));
-	setVelocityOf(1, Vec3(-1, 0, 0));
+	//applyForceOnBody(1, Vec3(1.5, 0.2, 0), Vec3(-2, 0, 0));
+
+	// produces error!!
+	applyForceOnBody(1, Vec3(1.5, 0.1, 0), Vec3(-5, -2, 0));
 }
 
 void RigidBodySystemSimulator::setUpDemo4() {
