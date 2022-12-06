@@ -41,7 +41,6 @@ This solution contains the following components:
 	 delete it (and any code related to "g_pEffect" in main.cpp)
 	 
 Further Note:
-HELP
 
  - DirectXMath (all functions/types starting with XM*): DirectXTK and the new 
    DXUT are both based on the new DirectXMath API for linear algebra that comes
