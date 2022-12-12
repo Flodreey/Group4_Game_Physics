@@ -4,15 +4,35 @@
 #include "Simulator.h"
 #include "vectorbase.h"
 
-//impement your own grid class for saving grid data
+// The grid class stores a (width x height)-sized temperature field with max temparatures of 100°C and min temperatures of -100°C 
 class Grid {
 public:
 	// Construtors
 	Grid();
+	Grid(int width, int height);
+	Grid(int width, int height, double distance, double sphereSize, vector<vector<double>> tempField);
+
+	// Getter and Setter
+	int getWidth();
+	int getHeight();
+	double getTempAt(int x, int y);
+	void setTempAt(int x, int y, double temp);
+	void setAttributes(int width, int height, double distance, double sphereSize, vector<vector<double>> tempField);
+
+	void drawTempField(DrawingUtilitiesClass* DUC);
+	vector<vector<double>> createTempField(int width, int height);
 
 
 private:
-	// Attributes
+	// width and height of the temperature field
+	int width;
+	int height;
+	// distance between the points
+	double distance;
+	// size of the spheres
+	double sphereSize;
+	// storing all temperatures in a 2-dimensional vector
+	vector<vector<double>> tempField;
 };
 
 
@@ -37,6 +57,9 @@ public:
 	Grid* diffuseTemperatureExplicit();
 	void diffuseTemperatureImplicit();
 
+	void setupDemo1();
+	void setupDemo2();
+
 private:
 	// Attributes
 	Vec3  m_vfMovableObjectPos;
@@ -45,7 +68,17 @@ private:
 	Point2D m_mouse;
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
+
 	Grid *T; //save results of every time step
+
+	double alpha;
+	int grid_width;
+	int grid_height;
+	
+	// these variables keep track if User changed any of the above variables in the UI
+	double previous_alpha;
+	int previous_grid_width;
+	int previous_grid_height;
 };
 
 #endif
