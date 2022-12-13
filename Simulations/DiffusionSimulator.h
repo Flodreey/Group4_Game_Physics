@@ -16,6 +16,7 @@ public:
 	int getWidth();
 	int getHeight();
 	double getTempAt(int x, int y);
+	double getDistance();
 	void setTempAt(int x, int y, double temp);
 	void setAttributes(int width, int height, double distance, double sphereSize, vector<vector<double>> tempField);
 
@@ -54,7 +55,7 @@ public:
 	void onMouse(int x, int y);
 	// Specific Functions
 	void drawObjects();
-	Grid* diffuseTemperatureExplicit();
+	Grid* diffuseTemperatureExplicit(float timeStep);
 	void diffuseTemperatureImplicit();
 
 	void setupDemo1();

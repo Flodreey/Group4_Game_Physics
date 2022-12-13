@@ -39,6 +39,10 @@ int Grid::getWidth() {
 	return width;
 }
 
+double Grid::getDistance() {
+	return distance;
+}
+
 int Grid::getHeight() {
 	return height;
 }
@@ -167,8 +171,17 @@ void DiffusionSimulator::notifyCaseChanged(int testCase)
 	}
 }
 
-Grid* DiffusionSimulator::diffuseTemperatureExplicit() {//add your own parameters
-	Grid* newT = new Grid();
+Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your own parameters
+	Grid* newT = new Grid(grid_width,grid_height);
+	for (int i = 1; i < grid_width - 1; i++) {
+		for (int j = 1; j < grid_height - 1; j++) {
+			double newtemp;
+			newtemp = T->getTempAt(i, j) + timeStep * alpha * ((T->getTempAt(i + 1, j) - 2 * T->getTempAt(i, j) + T->getTempAt(i - 1, j)) / pow(T->getDistance(), 2) +
+				(T->getTempAt(i , j + 1) - 2 * T->getTempAt(i, j) + T->getTempAt(i , j - 1)) / pow(T->getDistance(), 2));
+			newT->setTempAt(i, j, newtemp);
+
+		}
+	}
 	// to be implemented
 	//make sure that the temperature in boundary cells stays zero
 	return newT;
@@ -232,18 +245,6 @@ void DiffusionSimulator::diffuseTemperatureImplicit() {//add your own parameters
 
 void DiffusionSimulator::simulateTimestep(float timeStep)
 {
-	// to be implemented
-	// update current setup for each frame
-	switch (m_iTestCase)
-	{
-	case 0:
-		//T = diffuseTemperatureExplicit();
-		break;
-	case 1:
-		diffuseTemperatureImplicit();
-		break;
-	}
-
 	// user changed something in the UI so the scene needs to reload
 	if (grid_width != previous_grid_width || grid_height != previous_grid_height || alpha != previous_alpha) {
 		previous_grid_width = grid_width;
@@ -251,11 +252,31 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 		previous_alpha = alpha;
 		setupDemo1();
 	}
+	// to be implemented
+	// update current setup for each frame
+	switch (m_iTestCase)
+	{
+	case 0:
+		T = diffuseTemperatureExplicit( timeStep);
+		break;
+	case 1:
+		diffuseTemperatureImplicit();
+		break;
+	}
+
 }
 
 void DiffusionSimulator::setupDemo1() {
 	T = new Grid(grid_width, grid_height);
-	T->setTempAt(grid_width / 2, grid_height / 2, 80);
+	T->setTempAt(grid_width / 2, grid_height / 2, -1000);
+	std::mt19937 eng;
+	std::mt19937 eng2;
+	std::uniform_real_distribution<double> randTemp(-100, 100);
+	for (int i = 1; i < grid_width - 1; i++) {
+		for (int j = 1; j < grid_height - 1; j++) {
+			T->setTempAt(i, j, 100);
+		}
+	}
 }
 
 void DiffusionSimulator::setupDemo2() {
