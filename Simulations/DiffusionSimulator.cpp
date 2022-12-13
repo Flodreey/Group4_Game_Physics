@@ -5,29 +5,40 @@ using namespace std;
 Grid::Grid() {
 	int width = 15;
 	int height = 15;
-	vector<vector<double>> tempField = createTempField(width, height);
-	setAttributes(width, height, 0.1, 0.1, tempField);
+	vector<vector<Real>> tempField = createTempField(width, height);
+	vector<vector<Real>> tempFieldNew = createTempField(width, height);
+	setAttributes(width, height, 0.1, 0.1, tempField,tempFieldNew);
 
 }
 
 Grid::Grid(int width, int height) {
-	vector<vector<double>> tempField = createTempField(width, height);
-	setAttributes(width, height, 0.1, 0.1, tempField);
+	vector<vector<Real>> tempField = createTempField(width, height);
+	vector<vector<Real>> tempFieldNew = createTempField(width, height);
+	setAttributes(width, height, 0.1, 0.1, tempField,tempFieldNew);
 }
 
-Grid::Grid(int width, int height, double distance, double sphereSize, vector<vector<double>> tempField) {
-	setAttributes(width, height, distance, sphereSize, tempField);
+Grid::Grid(int width, int height, Real distance, double sphereSize, vector<vector<Real>> tempField, vector<vector<Real>> tempFieldNew) {
+	setAttributes(width, height, distance, sphereSize, tempField, tempFieldNew);
 }
 
-void Grid::setAttributes(int width, int height, double distance, double sphereSize, vector<vector<double>> tempField) {
+void Grid::setAttributes(int width, int height, Real distance, double sphereSize, vector<vector<Real>> tempField, vector<vector<Real>> tempFieldNew) {
 	this->width = width;
 	this->height = height;
 	this->distance = distance;
 	this->sphereSize = sphereSize;
 	this->tempField = tempField;
+	this->tempFieldNew = tempFieldNew;
 }
 
-double Grid::getTempAt(int x, int y) {
+void Grid::setNewValuesForTemp() {
+	for (int i = 0; i < width; i++) {
+		for (int j = 0; j < height; j++) {
+			tempField[i][j] = tempFieldNew[i][j];
+		}
+	}
+}
+
+Real Grid::getTempAt(int x, int y) {
 	if (x >= width || y >= height || x < 0 || y < 0) {
 		cout << "You're trying to access a point on the temperature field that does not exist: " << x << ", " << y << endl;
 		return 0;
@@ -39,7 +50,7 @@ int Grid::getWidth() {
 	return width;
 }
 
-double Grid::getDistance() {
+Real Grid::getDistance() {
 	return distance;
 }
 
@@ -47,7 +58,7 @@ int Grid::getHeight() {
 	return height;
 }
 
-void Grid::setTempAt(int x, int y, double temp) {
+void Grid::setTempAt(int x, int y, Real temp) {
 	if (x >= width || y >= height || x < 0 || y < 0) {
 		cout << "You're trying to set a point on the temperature field that does not exist: " << x << ", " << y << endl;
 		return;
@@ -59,6 +70,20 @@ void Grid::setTempAt(int x, int y, double temp) {
 
 	tempField[x][y] = temp;
 }
+
+void Grid::setTempAtNew(int x, int y, Real temp) {
+	if (x >= width || y >= height || x < 0 || y < 0) {
+		cout << "You're trying to set a point on the temperature field that does not exist: " << x << ", " << y << endl;
+		return;
+	}
+	if (x == 0 || y == 0 || x == width - 1 || y == height - 1) {
+		cout << "The temperatures on the border should stay 0°C! You tried to change it." << endl;
+		return;
+	}
+
+	tempFieldNew[x][y] = temp;
+}
+
 
 void Grid::drawTempField(DrawingUtilitiesClass* DUC) {
 	//Vec3 color = 0.6 * Vec3(0.97, 0.86, 1);
@@ -96,10 +121,10 @@ void Grid::drawTempField(DrawingUtilitiesClass* DUC) {
 }
 
 // creates a temperature field with a given width and height and sets all temperatures to 0°C
-vector<vector<double>> Grid::createTempField(int width, int height) {
-	vector<vector<double>> tempField;
+vector<vector<Real>> Grid::createTempField(int width, int height) {
+	vector<vector<Real>> tempField;
 	for (int x = 0; x < width; x++) {
-		vector<double> currentVector;
+		vector<Real> currentVector;
 		for (int y = 0; y < height; y++) {
 			currentVector.push_back(0);
 		}
@@ -170,12 +195,12 @@ void DiffusionSimulator::notifyCaseChanged(int testCase)
 		break;
 	}
 }
-
+/*
 Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your own parameters
 	Grid* newT = new Grid(grid_width,grid_height);
 	for (int i = 1; i < grid_width - 1; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
-			double newtemp;
+			Real newtemp;
 			newtemp = T->getTempAt(i, j) + timeStep * alpha * ((T->getTempAt(i + 1, j) - 2 * T->getTempAt(i, j) + T->getTempAt(i - 1, j)) / pow(T->getDistance(), 2) +
 				(T->getTempAt(i , j + 1) - 2 * T->getTempAt(i, j) + T->getTempAt(i , j - 1)) / pow(T->getDistance(), 2));
 			newT->setTempAt(i, j, newtemp);
@@ -185,6 +210,27 @@ Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your
 	// to be implemented
 	//make sure that the temperature in boundary cells stays zero
 	return newT;
+}
+
+*/
+
+
+Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your own parameters
+	//Grid* newT = new Grid(grid_width, grid_height);
+	for (int i = 1; i < grid_width - 1; i++) {
+		for (int j = 1; j < grid_height - 1; j++) {
+			Real newtemp;
+			newtemp = T->getTempAt(i, j) + timeStep * alpha * ((T->getTempAt(i + 1, j) - 2 * T->getTempAt(i, j) + T->getTempAt(i - 1, j)) / pow(T->getDistance(), 2) +
+				(T->getTempAt(i, j + 1) - 2 * T->getTempAt(i, j) + T->getTempAt(i, j - 1)) / pow(T->getDistance(), 2));
+			T->setTempAtNew(i, j, newtemp);
+
+		}
+	}
+	// to be implemented
+	//make sure that the temperature in boundary cells stays zero
+	T->setNewValuesForTemp();
+	
+	return T;
 }
 
 void setupB(std::vector<Real>& b) {//add your own parameters
@@ -271,7 +317,7 @@ void DiffusionSimulator::setupDemo1() {
 	T->setTempAt(grid_width / 2, grid_height / 2, -1000);
 	std::mt19937 eng;
 	std::mt19937 eng2;
-	std::uniform_real_distribution<double> randTemp(-100, 100);
+	std::uniform_real_distribution<Real> randTemp(-100, 100);
 	for (int i = 1; i < grid_width - 1; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
 			T->setTempAt(i, j, 100);

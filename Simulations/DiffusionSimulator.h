@@ -10,18 +10,20 @@ public:
 	// Construtors
 	Grid();
 	Grid(int width, int height);
-	Grid(int width, int height, double distance, double sphereSize, vector<vector<double>> tempField);
+	Grid(int width, int height, Real distance, double sphereSize, vector<vector<Real>> tempField, vector<vector<Real>> tempFieldNew);
 
 	// Getter and Setter
 	int getWidth();
 	int getHeight();
-	double getTempAt(int x, int y);
-	double getDistance();
-	void setTempAt(int x, int y, double temp);
-	void setAttributes(int width, int height, double distance, double sphereSize, vector<vector<double>> tempField);
+	Real getTempAt(int x, int y);
+	Real getDistance();
+	void setTempAt(int x, int y, Real temp);
+	void setTempAtNew(int x, int y, Real temp);
+	void setAttributes(int width, int height, Real distance, double sphereSize, vector<vector<Real>> tempField, vector<vector<Real>> tempFieldNew);
+	void setNewValuesForTemp();
 
 	void drawTempField(DrawingUtilitiesClass* DUC);
-	vector<vector<double>> createTempField(int width, int height);
+	vector<vector<Real>> createTempField(int width, int height);
 
 
 private:
@@ -29,11 +31,13 @@ private:
 	int width;
 	int height;
 	// distance between the points
-	double distance;
+	Real distance;
 	// size of the spheres
 	double sphereSize;
 	// storing all temperatures in a 2-dimensional vector
-	vector<vector<double>> tempField;
+	//vector<vector<Real>> tempField;
+	vector<vector<Real>> tempField;
+	vector<vector<Real>> tempFieldNew;
 };
 
 
@@ -72,12 +76,12 @@ private:
 
 	Grid *T; //save results of every time step
 
-	double alpha;
+	Real alpha;
 	int grid_width;
 	int grid_height;
 	
 	// these variables keep track if User changed any of the above variables in the UI
-	double previous_alpha;
+	Real previous_alpha;
 	int previous_grid_width;
 	int previous_grid_height;
 };
