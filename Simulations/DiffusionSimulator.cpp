@@ -219,9 +219,10 @@ Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your
 	//Grid* newT = new Grid(grid_width, grid_height);
 	for (int i = 1; i < grid_width - 1; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
+			Real factor1 = (T->getTempAt(i + 1, j) - 2 * T->getTempAt(i, j) + T->getTempAt(i - 1, j));
+			Real factor2 = (T->getTempAt(i, j + 1) - 2 * T->getTempAt(i, j) + T->getTempAt(i, j - 1));
 			Real newtemp;
-			newtemp = T->getTempAt(i, j) + timeStep * alpha * ((T->getTempAt(i + 1, j) - 2 * T->getTempAt(i, j) + T->getTempAt(i - 1, j)) / pow(T->getDistance(), 2) +
-				(T->getTempAt(i, j + 1) - 2 * T->getTempAt(i, j) + T->getTempAt(i, j - 1)) / pow(T->getDistance(), 2));
+			newtemp = T->getTempAt(i, j) + timeStep * alpha * (factor1 + factor2);
 			T->setTempAtNew(i, j, newtemp);
 
 		}
@@ -233,11 +234,17 @@ Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your
 	return T;
 }
 
-void setupB(std::vector<Real>& b) {//add your own parameters
+void setupB(std::vector<Real>& b, Grid* T) {//add your own parameters
 	// to be implemented
 	//set vector B[sizeX*sizeY]
-	for (int i = 0; i < 25; i++) {
-		b.at(i) = 0;
+	int width =  T->getWidth();
+	int height = T->getHeight();
+	int index = 0;
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			b.at(index) = T->getTempAt(j, i);
+			index++;
+		}
 	}
 }
 
@@ -247,27 +254,45 @@ void fillT() {//add your own parameters
 	//make sure that the temperature in boundary cells stays zero
 }
 
-void setupA(SparseMatrix<Real>& A, double factor) {//add your own parameters
+void setupA(SparseMatrix<Real>& A, double factor, Grid* T) {//add your own parameters
 	// to be implemented
 	//setup Matrix A[sizeX*sizeY*sizeZ, sizeX*sizeY*sizeZ]
 	// set with:  A.set_element( index1, index2 , value );
 	// if needed, read with: A(index1, index2);
 	// avoid zero rows in A -> set the diagonal value for boundary cells to 1.0
-	for (int i = 0; i < 25; i++) {
-			A.set_element(i, i, 1); // set diagonal
+	cout << "begin" << endl;
+	int index = 0;
+	for (int i = 0; i < A.n; i++) {
+		for (int j = 0; j < A.n; j++) {
+
+			//if (i < T->get)
+			if (!(i == 0 || j == 0 || i == T->getHeight() - 1 || j == T->getWidth() - 1)) {
+
+				if (i == j) {
+					A.set_element(i, j, 1 + 4 * factor);
+						A.set_element(i, j + 1, -factor);
+						A.set_element(i, j - 1, -factor);
+						A.set_element(i, j + T->getWidth(), -factor);
+						A.set_element(i, j - T->getWidth(), -factor);
+				}
+			}
+			cout << "Zeile: " << i << endl;
+			cout << "Spalte: " << j << endl;
+			cout << A(i, j) << endl;
+		}
 	}
 }
 
 
-void DiffusionSimulator::diffuseTemperatureImplicit() {//add your own parameters
+void DiffusionSimulator::diffuseTemperatureImplicit(float timeStep) {//add your own parameters
 	// solve A T = b
 	// to be implemented
-	const int N = 25;//N = sizeX*sizeY*sizeZ
+	const int N = T->getHeight() * T->getWidth();//N = sizeX*sizeY*sizeZ
 	SparseMatrix<Real> *A = new SparseMatrix<Real> (N);
 	std::vector<Real> *b = new std::vector<Real>(N);
 
-	setupA(*A, 0.1);
-	setupB(*b);
+	setupA(*A, alpha * timeStep, T);
+	setupB(*b,T);
 
 	// perform solve
 	Real pcg_target_residual = 1e-05;
@@ -296,7 +321,11 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 		previous_grid_width = grid_width;
 		previous_grid_height = grid_height;
 		previous_alpha = alpha;
-		setupDemo1();
+		if (m_iTestCase == 0) {
+			setupDemo1();
+		}
+		else setupDemo2();
+		
 	}
 	// to be implemented
 	// update current setup for each frame
@@ -306,7 +335,7 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 		T = diffuseTemperatureExplicit( timeStep);
 		break;
 	case 1:
-		diffuseTemperatureImplicit();
+		diffuseTemperatureImplicit(timeStep);
 		break;
 	}
 
@@ -320,12 +349,26 @@ void DiffusionSimulator::setupDemo1() {
 	std::uniform_real_distribution<Real> randTemp(-100, 100);
 	for (int i = 1; i < grid_width - 1; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
-			T->setTempAt(i, j, 100);
+			T->setTempAt(i, j, randTemp(eng));
 		}
 	}
 }
 
 void DiffusionSimulator::setupDemo2() {
+	grid_width = 4;
+	grid_height = 4;
+	T = new Grid(grid_width, grid_height);
+	T->setTempAt(grid_width / 2, grid_height / 2, -1000);
+	std::mt19937 eng;
+	std::mt19937 eng2;
+	std::uniform_real_distribution<Real> randTemp(-100, 100);
+	int counter = 0;
+	for (int i = 0; i < grid_width ; i++) {
+		for (int j = 0; j < grid_height ; j++) {
+			T->setTempAt(i, j, 100);
+			counter++;
+		}
+	}
 
 }
 

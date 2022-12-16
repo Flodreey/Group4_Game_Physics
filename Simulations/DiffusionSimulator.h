@@ -60,7 +60,7 @@ public:
 	// Specific Functions
 	void drawObjects();
 	Grid* diffuseTemperatureExplicit(float timeStep);
-	void diffuseTemperatureImplicit();
+	void diffuseTemperatureImplicit(float timeStep);
 
 	void setupDemo1();
 	void setupDemo2();
