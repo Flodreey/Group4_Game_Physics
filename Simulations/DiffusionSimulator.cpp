@@ -248,10 +248,24 @@ void setupB(std::vector<Real>& b, Grid* T) {//add your own parameters
 	}
 }
 
-void fillT() {//add your own parameters
+void fillT(vector<Real> x, Grid& T) {//add your own parameters
 	// to be implemented
 	//fill T with solved vector x
 	//make sure that the temperature in boundary cells stays zero
+
+	int index = 0;
+	for (int i = 0; i < T.getWidth(); i++) {
+		for (int j = 0; j < T.getHeight(); j++) {
+
+			// we don't change boundary values of T
+			if (i == 0 || i == T.getHeight() - 1 || j == 0 || j == T.getWidth() - 1) {
+				index++;
+				continue;
+			}
+
+			T.setTempAt(i, j, x[index++]);
+		}
+	}
 }
 
 void setupA(SparseMatrix<Real>& A, double factor, Grid* T) {//add your own parameters
@@ -260,27 +274,41 @@ void setupA(SparseMatrix<Real>& A, double factor, Grid* T) {//add your own param
 	// set with:  A.set_element( index1, index2 , value );
 	// if needed, read with: A(index1, index2);
 	// avoid zero rows in A -> set the diagonal value for boundary cells to 1.0
-	cout << "begin" << endl;
-	int index = 0;
+	A.zero();
 	for (int i = 0; i < A.n; i++) {
 		for (int j = 0; j < A.n; j++) {
 
-			//if (i < T->get)
-			if (!(i == 0 || j == 0 || i == T->getHeight() - 1 || j == T->getWidth() - 1)) {
-
-				if (i == j) {
-					A.set_element(i, j, 1 + 4 * factor);
-						A.set_element(i, j + 1, -factor);
-						A.set_element(i, j - 1, -factor);
-						A.set_element(i, j + T->getWidth(), -factor);
-						A.set_element(i, j - T->getWidth(), -factor);
-				}
+			// all rows that correspond to a boundary cell get a 1 on the diagonal line
+			if (i < T->getWidth() || i >= A.n - T->getWidth() || i % T->getWidth() == 0 || i % T->getWidth() == T->getWidth() - 1) {
+				A.set_element(i, i, 1);
+				goto OUTER;
+				continue;
 			}
-			cout << "Zeile: " << i << endl;
-			cout << "Spalte: " << j << endl;
-			cout << A(i, j) << endl;
+
+			if (i == j) {
+				// set diagonal to (1 + 4 * delta t * alpha)
+				A.set_element(i, j, 1 + 4 * factor);
+				// set left and right from diagonal to (- delta t * alpha)
+				A.set_element(i, j + 1, -factor);
+				A.set_element(i, j - 1, -factor);
+				// set width cells to the right and width cells to the left from the diagonal to (- delta t * alpha)
+				A.set_element(i, j + T->getWidth(), -factor);
+				A.set_element(i, j - T->getWidth(), -factor);
+			}
 		}
+		OUTER: continue;
 	}
+	
+	// print A
+	/*
+	cout << "Matrix A:" << endl;
+	for (int i = 0; i < A.n; i++) {
+		for (int j = 0; j < A.n; j++) {
+			cout << A(i, j) << "       ";
+		}
+		cout << endl;
+	}
+	*/
 }
 
 
@@ -309,7 +337,7 @@ void DiffusionSimulator::diffuseTemperatureImplicit(float timeStep) {//add your 
 	// preconditioners: 0 off, 1 diagonal, 2 incomplete cholesky
 	solver.solve(*A, *b, x, ret_pcg_residual, ret_pcg_iterations, 0);
 	// x contains the new temperature values
-	fillT();//copy x to T
+	fillT(x, *T);//copy x to T
 }
 
 
@@ -332,7 +360,7 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 	switch (m_iTestCase)
 	{
 	case 0:
-		T = diffuseTemperatureExplicit( timeStep);
+		T = diffuseTemperatureExplicit(timeStep);
 		break;
 	case 1:
 		diffuseTemperatureImplicit(timeStep);
@@ -344,29 +372,29 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 void DiffusionSimulator::setupDemo1() {
 	T = new Grid(grid_width, grid_height);
 	T->setTempAt(grid_width / 2, grid_height / 2, -1000);
+	T->setTempAt((grid_width / 2) + 1, grid_height / 2, -1000);
 	std::mt19937 eng;
-	std::mt19937 eng2;
 	std::uniform_real_distribution<Real> randTemp(-100, 100);
 	for (int i = 1; i < grid_width - 1; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
-			T->setTempAt(i, j, randTemp(eng));
+			//T->setTempAt(i, j, randTemp(eng));
 		}
 	}
 }
 
 void DiffusionSimulator::setupDemo2() {
-	grid_width = 4;
-	grid_height = 4;
 	T = new Grid(grid_width, grid_height);
-	T->setTempAt(grid_width / 2, grid_height / 2, -1000);
+
+	//T->setTempAt(grid_width / 2, grid_height / 2, -1000);
+	//T->setTempAt((grid_width / 2) + 1, grid_height / 2, -1000);
+	//T->setTempAt((grid_width / 2) - 1, grid_height / 2, 1000);
+
 	std::mt19937 eng;
-	std::mt19937 eng2;
 	std::uniform_real_distribution<Real> randTemp(-100, 100);
-	int counter = 0;
-	for (int i = 0; i < grid_width ; i++) {
-		for (int j = 0; j < grid_height ; j++) {
-			T->setTempAt(i, j, 100);
-			counter++;
+	for (int i = 1; i < grid_width - 1 ; i++) {
+		for (int j = 1; j < grid_height - 1; j++) {
+			//T->setTempAt(i, j, randTemp(eng));
+			T->setTempAt(i, j, -100);
 		}
 	}
 
