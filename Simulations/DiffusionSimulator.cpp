@@ -237,7 +237,7 @@ Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your
 void setupB(std::vector<Real>& b, Grid* T) {//add your own parameters
 	// to be implemented
 	//set vector B[sizeX*sizeY]
-	int width =  T->getWidth();
+	int width = T->getWidth();
 	int height = T->getHeight();
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
@@ -313,9 +313,9 @@ void setupA(SparseMatrix<Real>& A, double factor, Grid* T) {//add your own param
 				A.set_element(i, j - T->getWidth(), -factor);
 			}
 		}
-		OUTER: continue;
+	OUTER: continue;
 	}
-	
+
 	// print A
 	/*
 	cout << "Matrix A:" << endl;
@@ -333,11 +333,11 @@ void DiffusionSimulator::diffuseTemperatureImplicit(float timeStep) {//add your 
 	// solve A T = b
 	// to be implemented
 	const int N = T->getHeight() * T->getWidth();//N = sizeX*sizeY*sizeZ
-	SparseMatrix<Real> *A = new SparseMatrix<Real> (N);
-	std::vector<Real> *b = new std::vector<Real>(N);
+	SparseMatrix<Real>* A = new SparseMatrix<Real>(N);
+	std::vector<Real>* b = new std::vector<Real>(N);
 
 	setupA(*A, alpha * timeStep, T);
-	setupB(*b,T);
+	setupB(*b, T);
 
 	// perform solve
 	Real pcg_target_residual = 1e-05;
@@ -354,9 +354,9 @@ void DiffusionSimulator::diffuseTemperatureImplicit(float timeStep) {//add your 
 	// preconditioners: 0 off, 1 diagonal, 2 incomplete cholesky
 	solver.solve(*A, *b, x, ret_pcg_residual, ret_pcg_iterations, 0);
 	// x contains the new temperature values
+	
 	fillT(x, *T);//copy x to T
 }
-
 
 
 void DiffusionSimulator::simulateTimestep(float timeStep)
