@@ -237,18 +237,18 @@ Grid* DiffusionSimulator::diffuseTemperatureExplicit(float timeStep) {//add your
 void setupB(std::vector<Real>& b, Grid* T) {//add your own parameters
 	// to be implemented
 	//set vector B[sizeX*sizeY]
-	int width =  T->getWidth();
+	int width = T->getWidth();
 	int height = T->getHeight();
 	int index = 0;
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
+	for (int i = 0; i < width; i++) {
+		for (int j = 0; j < height; j++) {
 			b.at(index) = T->getTempAt(j, i);
 			index++;
 		}
 	}
 }
 
-void fillT(vector<Real> x, Grid& T) {//add your own parameters
+void fillT(vector<Real>& x, Grid& T) {//add your own parameters
 	// to be implemented
 	//fill T with solved vector x
 	//make sure that the temperature in boundary cells stays zero
@@ -259,7 +259,7 @@ void fillT(vector<Real> x, Grid& T) {//add your own parameters
 
 			// we don't change boundary values of T
 			if (i == 0 || i == T.getHeight() - 1 || j == 0 || j == T.getWidth() - 1) {
-				index++;
+				T.setTempAt(i, j, 0);
 				continue;
 			}
 
@@ -296,9 +296,9 @@ void setupA(SparseMatrix<Real>& A, double factor, Grid* T) {//add your own param
 				A.set_element(i, j - T->getWidth(), -factor);
 			}
 		}
-		OUTER: continue;
+	OUTER: continue;
 	}
-	
+
 	// print A
 	/*
 	cout << "Matrix A:" << endl;
@@ -316,11 +316,11 @@ void DiffusionSimulator::diffuseTemperatureImplicit(float timeStep) {//add your 
 	// solve A T = b
 	// to be implemented
 	const int N = T->getHeight() * T->getWidth();//N = sizeX*sizeY*sizeZ
-	SparseMatrix<Real> *A = new SparseMatrix<Real> (N);
-	std::vector<Real> *b = new std::vector<Real>(N);
+	SparseMatrix<Real>* A = new SparseMatrix<Real>(N);
+	std::vector<Real>* b = new std::vector<Real>(N);
 
 	setupA(*A, alpha * timeStep, T);
-	setupB(*b,T);
+	setupB(*b, T);
 
 	// perform solve
 	Real pcg_target_residual = 1e-05;
@@ -337,9 +337,9 @@ void DiffusionSimulator::diffuseTemperatureImplicit(float timeStep) {//add your 
 	// preconditioners: 0 off, 1 diagonal, 2 incomplete cholesky
 	solver.solve(*A, *b, x, ret_pcg_residual, ret_pcg_iterations, 0);
 	// x contains the new temperature values
+	
 	fillT(x, *T);//copy x to T
 }
-
 
 
 void DiffusionSimulator::simulateTimestep(float timeStep)
@@ -393,8 +393,9 @@ void DiffusionSimulator::setupDemo2() {
 	std::uniform_real_distribution<Real> randTemp(-100, 100);
 	for (int i = 1; i < grid_width - 1 ; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
+			//
 			//T->setTempAt(i, j, randTemp(eng));
-			T->setTempAt(i, j, -100);
+		    T->setTempAt(i, j, -100);
 		}
 	}
 
