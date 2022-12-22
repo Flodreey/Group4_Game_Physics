@@ -239,33 +239,50 @@ void setupB(std::vector<Real>& b, Grid* T) {//add your own parameters
 	//set vector B[sizeX*sizeY]
 	int width =  T->getWidth();
 	int height = T->getHeight();
-	int index = 0;
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			b.at(index) = T->getTempAt(j, i);
-			index++;
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+			b.at(x + y * width) = T->getTempAt(x, y);
 		}
 	}
+
+	// print vector b
+	/*
+	cout << "Vector b: " << endl;
+	cout << "[ " << endl;
+	for (int i = 0; i < b.size(); i++) {
+		cout << b[i] << endl;
+	}
+	cout << " ]" << endl;
+	*/
 }
 
-void fillT(vector<Real> x, Grid& T) {//add your own parameters
+void fillT(vector<Real> t, Grid& T) {//add your own parameters
 	// to be implemented
 	//fill T with solved vector x
 	//make sure that the temperature in boundary cells stays zero
 
-	int index = 0;
-	for (int i = 0; i < T.getWidth(); i++) {
-		for (int j = 0; j < T.getHeight(); j++) {
+	int width = T.getWidth();
+	int height = T.getHeight();
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
 
 			// we don't change boundary values of T
-			if (i == 0 || i == T.getHeight() - 1 || j == 0 || j == T.getWidth() - 1) {
-				index++;
+			if (x == 0 || x == T.getWidth() - 1 || y == 0 || y == T.getHeight() - 1)
 				continue;
-			}
 
-			T.setTempAt(i, j, x[index++]);
+			T.setTempAt(x, y, t[x + y * T.getWidth()]);
 		}
 	}
+
+	// print vector t
+	/*
+	cout << "Vector t: " << endl;
+	cout << "[ " << endl;
+	for (int i = 0; i < t.size(); i++) {
+		cout << t[i] << endl;
+	}
+	cout << " ]" << endl;
+	*/
 }
 
 void setupA(SparseMatrix<Real>& A, double factor, Grid* T) {//add your own parameters
@@ -304,7 +321,7 @@ void setupA(SparseMatrix<Real>& A, double factor, Grid* T) {//add your own param
 	cout << "Matrix A:" << endl;
 	for (int i = 0; i < A.n; i++) {
 		for (int j = 0; j < A.n; j++) {
-			cout << A(i, j) << "       ";
+			cout << "  " << A(i, j) << "  ";
 		}
 		cout << endl;
 	}
@@ -371,13 +388,15 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 
 void DiffusionSimulator::setupDemo1() {
 	T = new Grid(grid_width, grid_height);
-	T->setTempAt(grid_width / 2, grid_height / 2, -1000);
-	T->setTempAt((grid_width / 2) + 1, grid_height / 2, -1000);
+
+	//T->setTempAt(grid_width / 2, grid_height / 2, -1000);
+	//T->setTempAt((grid_width / 2) + 1, grid_height / 2, -1000);
+
 	std::mt19937 eng;
 	std::uniform_real_distribution<Real> randTemp(-100, 100);
 	for (int i = 1; i < grid_width - 1; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
-			//T->setTempAt(i, j, randTemp(eng));
+			T->setTempAt(i, j, randTemp(eng));
 		}
 	}
 }
@@ -393,8 +412,8 @@ void DiffusionSimulator::setupDemo2() {
 	std::uniform_real_distribution<Real> randTemp(-100, 100);
 	for (int i = 1; i < grid_width - 1 ; i++) {
 		for (int j = 1; j < grid_height - 1; j++) {
-			//T->setTempAt(i, j, randTemp(eng));
-			T->setTempAt(i, j, -100);
+			T->setTempAt(i, j, randTemp(eng));
+			//T->setTempAt(i, j, -100);
 		}
 	}
 
