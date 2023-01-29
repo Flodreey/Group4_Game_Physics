@@ -225,6 +225,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DiffusionSimulator.cpp" />
+    <ClCompile Include="SPHSystemSimulator.cpp" />
     <ClCompile Include="SphereSystemSimulator.cpp" />
     <ClCompile Include="TemplateSimulator.cpp" />
     <ClCompile Include="util\FFmpeg.cpp" />
@@ -233,6 +234,7 @@
   <ItemGroup>
     <ClInclude Include="DiffusionSimulator.h" />
     <ClInclude Include="DrawingUtilitiesClass.h" />
+    <ClInclude Include="SPHSystemSimulator.h" />
     <ClInclude Include="general.h" />
     <ClInclude Include="MassSpringSystemSimulator.h" />
     <ClInclude Include="pcgsolver.h" />
